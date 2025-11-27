@@ -1,0 +1,939 @@
+// 매입매출장 원래코드
+import QtQuick.Controls
+import QtQuick.Layouts
+import QtQuick
+import "./qml"
+
+
+
+ApplicationWindow {
+    id: mainWindow
+    visible: true
+    width: 1920
+    height: 1080
+    title: "매입매출장"
+
+    property string dataFilePath: "data/data.xlsx"
+    //property string recordFilePath: "data/record.xlsx"
+    // data.xlsx에서 읽어온 리스트
+    property list<string> supplierList
+    property list<string> productList
+    property list<string> sizeList
+    property list<string> priceList
+
+    //record.xlsx에서 읽어온 리스트
+    property int amountSum: 0
+    property int gonggaSum: 0
+    property int bugaSum: 0
+    property int hapgyeSum: 0
+    property int ipamountSum: 0
+    property int misuSum: 0
+    property int gaesoo: 0
+    property list<int> readRows
+    property var combinedModel: []
+
+
+    Component.onCompleted: {            //ApplicationWindow가 켜지면 엑셀파일 로드
+        // 👈 C++의 Q_INVOKABLE 함수 호출!
+        if (excelData.loadExcelData(dataFilePath)) {
+            // 로드 성공 후 데이터 가져오기
+            var suppliers = excelData.getDataName();
+            var products = excelData.getDataProduct();
+            var sizes = excelData.getDataSize();
+            var prices = excelData.getDataPrice();
+
+            console.log("로드 성공! 업체 수: " + products.length);
+
+            for(let i=0;i<suppliers.length;i++) {
+                if(suppliers[i] === "") {
+                    break;
+                }
+                else {
+                    mainWindow.supplierList.push(suppliers[i]);
+                }
+            }
+
+            for(let j=0;j<products.length;j++) {
+                mainWindow.productList.push(products[j]);
+                mainWindow.sizeList.push(sizes[j]);
+                mainWindow.priceList.push(prices[j]);
+            }
+
+        } else {
+            console.log("로드 실패! 경로를 확인하세요.");
+        }
+    }
+
+
+    menuBar: MenuBar {
+        Menu {
+            title: qsTr("추가")
+            MenuItem {
+                text: qsTr("업체 추가")
+                onTriggered: supplierAddPopup.open()
+            }
+
+            MenuItem {
+                text: qsTr("상품 추가")
+                onTriggered: productAddPopup.open()
+            }
+        }
+        Menu {
+            title: qsTr("yees")
+            Action { text: qsTr("yeee") }
+        }
+    }
+    Popup {
+        id: supplierAddPopup
+        width: 200
+        height: 50
+        //anchors.centerIn: mainWindow
+
+        modal: true
+        closePolicy: Popup.CloseOnPressOutside
+        contentItem: Row {
+            TextField {
+                id: supplierAddTextfield
+                placeholderText: qsTr("업체명 입력")
+            }
+            Button {
+                id: supplierAddButton
+                text: qsTr("입력")
+                onClicked: {
+                    excelData.writeDataName(supplierAddTextfield.text, mainWindow.supplierList.length);
+                    mainWindow.supplierList.push(supplierAddTextfield.text);
+                    console.log("추가 성공");
+                }
+            }
+            Button {
+                id: supplierAddPopupClose
+                text: qsTr("X")
+                onClicked: supplierAddPopup.close()
+            }
+        }
+
+    }
+    Popup {
+        id: productAddPopup
+        width: 350
+        height: 50
+        //anchors.centerIn: mainWindow
+
+        modal: true
+        closePolicy: Popup.CloseOnPressOutside
+        contentItem: Row {
+            TextField {
+                id: productAddName
+                placeholderText: qsTr("상품명")
+            }
+            TextField {
+                id: productAddSize
+                placeholderText: qsTr("규격")
+                width: 80
+            }
+            TextField {
+                id: productAddPrice
+                placeholderText: qsTr("단가")
+                width: 80
+            }
+            Button {
+                id: productAddButton
+                text: qsTr("입력")
+                onClicked:  {
+                    excelData.writeDataProduct(productAddName.text, productAddSize.text, productAddPrice.text);
+                    mainWindow.productList.push(productAddName.text);
+                    mainWindow.sizeList.push(productAddSize.text);
+                    mainWindow.priceList.push(productAddPrice.text);
+                    console.log("추가 성공");
+                }
+            }
+            Button {
+                id: productAddPopupClose
+                text: qsTr("X")
+                onClicked: productAddPopup.close()
+            }
+        }
+    }
+
+
+    ColumnLayout{
+        spacing: 15
+        Layout.alignment: Qt.AlignVCenter
+        RowLayout {       //여기하고 밑에 로우는 입력하는 부분
+            spacing: 10
+            //Layout.alignment: Qt.AlignHCenter
+
+            Text {
+                text: qsTr("구분")
+                font.pixelSize: 18
+            }
+            Button {
+                id: maeip
+                property bool mae: true
+                text: qsTr(maeip.mae ? "매입" : "매출")
+                onClicked: {
+                    maeip.mae = maeip.mae ? false : true
+                }
+            }
+
+            Text {
+                text: qsTr("거래일자")
+                font.pixelSize: 18
+            }
+
+            Button {
+                id: calendarButton
+                property date currentDate : new Date()
+                text: qsTr(`${calendarButton.currentDate.getFullYear()}년 ${calendarButton.currentDate.getMonth()+1}월 ${calendarButton.currentDate.getDate()}일`)
+
+                onClicked: {
+                    calendarPopup.open()
+                }
+            }
+
+            Popup {
+                id: calendarPopup
+                width: 270
+                height: 300
+                anchors.centerIn: mainWindow
+
+                modal: true     //뒤에 다른요소와 상호작용 차단 = true, 허용 = false
+                closePolicy: Popup.CloseOnPressOutside    //esc누르면 닫힘
+                contentItem: MyCalendar {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.top: parent.top
+                    anchors.topMargin: 10
+                    calendarParent: 0
+                }
+            }
+            Text {
+                text: qsTr("거래처명")
+                font.pixelSize: 18
+            }
+            ComboBox {
+                id: supplierComboBox
+                width: 200
+                height: 25
+                // 목록에 표시될 데이터 모델
+                model: supplierList
+
+                // 현재 선택된 인덱스 (0부터 시작)
+                currentIndex: 0
+
+                // 선택된 항목이 변경될 때 동작
+                onActivated: (index) => {
+                    console.log("선택된 옵션:", supplierComboBox.currentText);
+                }
+
+                popup: Popup {
+                    y: supplierComboBox.height - 1
+                    width: supplierComboBox.width
+                    height: Math.min(contentItem.implicitHeight, 600)
+                    padding: 1
+
+                    contentItem: ListView {
+                        clip: true
+                        implicitHeight: contentHeight
+                        model: supplierComboBox.popup.visible ? supplierComboBox.delegateModel : null
+                        currentIndex: supplierComboBox.highlightedIndex
+
+                        ScrollBar.vertical: ScrollBar {
+                            policy: ScrollBar.AlwaysOn
+                        }
+                    }
+                }
+            }
+
+            Text {
+                text: qsTr("상품명")
+                font.pixelSize: 18
+            }
+            ComboBox {
+                id: productComboBox
+                width: 200
+                height: 25
+                // 목록에 표시될 데이터 모델
+                model: productList
+
+                // 현재 선택된 인덱스 (0부터 시작)
+                currentIndex: 0
+
+                popup: Popup {
+                    y: productComboBox.height - 1
+                    width: productComboBox.width
+                    height: Math.min(contentItem.implicitHeight, 600)
+                    padding: 1
+
+                    contentItem: ListView {
+                        clip: true
+                        implicitHeight: contentHeight
+                        model: productComboBox.popup.visible ? productComboBox.delegateModel : null
+                        currentIndex: productComboBox.highlightedIndex
+
+                        ScrollBar.vertical: ScrollBar {
+                            policy: ScrollBar.AlwaysOn
+                        }
+                    }
+                }
+
+                // 선택된 항목이 변경될 때 동작
+                onActivated: (index) => {
+                    console.log("선택된 옵션번호:", productComboBox.currentIndex);
+                }
+
+
+            }
+
+            Text {
+                text: qsTr("규격")
+                font.pixelSize: 18
+            }
+
+            TextField {
+                id: textSize
+                text: mainWindow.sizeList[productComboBox.currentIndex]
+            }
+
+
+            Text {
+                text: qsTr("단가")
+                font.pixelSize: 18
+            }
+            TextField {
+                id: textPrice
+                text: mainWindow.priceList[productComboBox.currentIndex]
+            }
+        }
+        RowLayout {
+            spacing: 10
+            //Layout.alignment: Qt.AlignHCenter
+            Text {
+                text: qsTr("수량")
+                font.pixelSize: 18
+            }
+            TextField {
+                id: textAmount
+                width: 50
+                text: "1"
+            }
+
+            Text {
+                text: qsTr("세액구분")
+                font.pixelSize: 18
+            }
+            Button {
+                id: taxornot
+                property bool ta: true
+                text: qsTr(taxornot.ta ? "별도" : "없음")
+                onClicked: {
+                    taxornot.ta = taxornot.ta ? false : true
+                }
+            }
+
+            Text {
+                text: qsTr("공급가액")
+                font.pixelSize: 18
+            }
+            TextField {
+                id: textGongGa
+                text: {
+                    var textIntPrice = parseInt(textPrice.text);
+                    var textIntAmount = parseInt(textAmount.text);
+                    if(isNaN(textIntPrice) || isNaN(textIntAmount)) {
+                        return "숫자가 아님";
+                    }
+                    else {
+                        return textIntPrice * textIntAmount
+                    }
+                }
+            }
+
+            Text {
+                text: qsTr("부가세액")
+                font.pixelSize: 18
+            }
+            TextField {
+                id: textBuGa
+                text: {
+                    var textGongGeupGaAek = parseInt(textGongGa.text);
+                    if(isNaN(textGongGeupGaAek)) {
+                        return "숫자가 아님";
+                    }
+                    else {
+                        return textGongGeupGaAek*0.1
+                    }
+                }
+            }
+            Text {
+                text: qsTr("합계금액")
+                font.pixelSize: 18
+            }
+            TextField {
+                id: textHapGye
+                text: {
+                    var textGongGeupGaAek = parseInt(textGongGa.text);
+                    var textBuGaSaeAek = parseInt(textBuGa.text);
+                    if(isNaN(textGongGeupGaAek)) {
+                        return "숫자가 아님";
+                    }
+                    else {
+                        return textGongGeupGaAek + textBuGaSaeAek;
+                    }
+                }
+            }
+
+            Button {
+                id: addRecord
+                text: qsTr("입력")
+                onClicked: {
+                    excelData.writeExcelRecord(maeip.mae, calendarButton.currentDate, supplierComboBox.currentText, productComboBox.currentText, textSize.text, textPrice.text, textAmount.text)
+                    recordAddedPopup.open()
+                }
+            }
+            Popup {
+                id: recordAddedPopup
+                width: 75
+                height: 80
+                x: mainWindow.width/2 - 75
+                y: mainWindow.height/2 - 80
+
+                modal: true
+                closePolicy: Popup.CloseOnPressOutside
+                contentItem: ColumnLayout {
+                    Layout.alignment: Qt.AlignHCenter
+                    Text {
+                        text: qsTr("추가 성공")
+                    }
+                    Button {
+                        text: qsTr("닫기")
+                        onClicked: recordAddedPopup.close()
+                    }
+                }
+            }
+
+
+
+        }
+
+        RowLayout {           //검색하는 부분
+            id: searchingRow
+            spacing: 5
+            //Layout.alignment: Qt.AlignHCenter
+            Text {
+                text: qsTr("검색 기간")
+                font.pixelSize: 18
+            }
+            Button {
+                id: searchCalendarFirst
+                property date currentDate : new Date()
+                text: qsTr(`${searchCalendarFirst.currentDate.getFullYear()}년 ${searchCalendarFirst.currentDate.getMonth()+1}월 ${searchCalendarFirst.currentDate.getDate()}일`)
+
+                onClicked: {
+                    scalendarPopup1.open()
+                }
+            }
+            Popup {
+                id: scalendarPopup1
+                width: 270
+                height: 300
+                anchors.centerIn: mainWindow
+
+                modal: true     //뒤에 다른요소와 상호작용 차단 = true, 허용 = false
+                closePolicy: Popup.CloseOnPressOutside    //esc누르면 닫힘
+                contentItem: MyCalendar {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.top: parent.top
+                    anchors.topMargin: 10
+                    calendarParent: 1
+                }
+            }
+
+            Button {
+                id: searchCalendarSecond
+                property date currentDate : new Date()
+                text: qsTr(`${searchCalendarSecond.currentDate.getFullYear()}년 ${searchCalendarSecond.currentDate.getMonth()+1}월 ${searchCalendarSecond.currentDate.getDate()}일`)
+
+                onClicked: {
+                    scalendarPopup2.open()
+                }
+            }
+            Popup {
+                id: scalendarPopup2
+                width: 270
+                height: 300
+                anchors.centerIn: mainWindow
+
+                modal: true     //뒤에 다른요소와 상호작용 차단 = true, 허용 = false
+                closePolicy: Popup.CloseOnPressOutside    //esc누르면 닫힘
+                contentItem: MyCalendar {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.top: parent.top
+                    anchors.topMargin: 10
+                    calendarParent: 2
+                }
+            }
+
+            Text {
+                text: qsTr("구분")
+                font.pixelSize: 18
+            }
+
+            Button {
+                id: searchMaeip
+                property bool mae: true
+                text: qsTr(searchMaeip.mae ? "매입" : "매출")
+                onClicked: {
+                    searchMaeip.mae = searchMaeip.mae ? false : true
+                }
+            }
+
+            Text {
+                text: qsTr("거래처명")
+                font.pixelSize: 18
+            }
+
+            ComboBox {
+                id: searchSupplierComboBox
+                width: 200
+                height: 25
+                // 목록에 표시될 데이터 모델
+                model: supplierList
+
+                // 현재 선택된 인덱스 (0부터 시작)
+                currentIndex: 0
+
+                // 선택된 항목이 변경될 때 동작
+                onActivated: (index) => {
+                    console.log("선택된 옵션:", searchSupplierComboBox.currentText);
+                }
+
+                popup: Popup {
+                    y: searchSupplierComboBox.height - 1
+                    width: searchSupplierComboBox.width
+                    height: Math.min(contentItem.implicitHeight, 600)
+                    padding: 1
+
+                    contentItem: ListView {
+                        clip: true
+                        implicitHeight: contentHeight
+                        model: searchSupplierComboBox.popup.visible ? searchSupplierComboBox.delegateModel : null
+                        currentIndex: searchSupplierComboBox.highlightedIndex
+
+                        ScrollBar.vertical: ScrollBar {
+                            policy: ScrollBar.AlwaysOn
+                        }
+                    }
+                }
+            }
+            Text {
+                text: qsTr("상품명")
+                font.pixelSize: 18
+            }
+            ComboBox {
+                id: searchProductComboBox
+                width: 200
+                height: 25
+                // 목록에 표시될 데이터 모델
+                model: productList
+
+                // 현재 선택된 인덱스 (0부터 시작)
+                currentIndex: 0
+
+                popup: Popup {
+                    y: searchProductComboBox.height - 1
+                    width: searchProductComboBox.width
+                    height: Math.min(contentItem.implicitHeight, 600)
+                    padding: 1
+
+                    contentItem: ListView {
+                        clip: true
+                        implicitHeight: contentHeight
+                        model: searchProductComboBox.popup.visible ? searchProductComboBox.delegateModel : null
+                        currentIndex: searchProductComboBox.highlightedIndex
+
+                        ScrollBar.vertical: ScrollBar {
+                            policy: ScrollBar.AlwaysOn
+                        }
+                    }
+                }
+
+                // 선택된 항목이 변경될 때 동작
+                onActivated: (index) => {
+                    console.log("선택된 옵션번호:", searchProductComboBox.currentIndex);
+                }
+            }
+
+            Button {
+                id: searchRecord
+                text: qsTr("검색")
+
+                onClicked: {
+                    if(excelData.readRecordRange(searchCalendarFirst.currentDate, searchCalendarSecond.currentDate, searchMaeip.mae, searchSupplierComboBox.currentText, searchProductComboBox.currentText)) {
+                        //먼저 리스트들 싹다 초기화
+
+                        mainWindow.readRows = [];
+                        mainWindow.combinedModel = [];
+                        mainWindow.amountSum = 0;
+                        mainWindow.gonggaSum = 0;
+                        mainWindow.bugaSum = 0;
+                        mainWindow.hapgyeSum = 0;
+                        mainWindow.ipamountSum = 0;
+                        mainWindow.misuSum = 0;
+
+
+                        //그 후에 값들 넣어주자
+                        var recordGB = excelData.getResultGooboon();
+                        var recordDate = excelData.getResultDate();
+                        var recordSupplier = excelData.getResultSupplier();
+                        var recordProduct = excelData.getResultProduct();
+                        var recordSize = excelData.getResultSize();
+                        var recordPrice = excelData.getResultPrice();
+                        var recordQuantity = excelData.getResultQuantity();
+                        var recordGongga = excelData.getResultGongga();
+                        var recordBuga = excelData.getResultBuga();
+                        var recordHapgye = excelData.getResultHapgye();
+                        var recordIpdate = excelData.getResultIpdate();
+                        var recordIpAmount = excelData.getResultIpAmount();
+                        var recordMisu = excelData.getResultMisu();
+                        var recordRows = excelData.getReadResultRows();
+
+                        mainWindow.gaesoo = recordGB.length
+                        console.log(recordGB.length, "개만큼 발견");
+                        for(let i=0;i<recordGB.length;i++) {
+                            // console.log(recordGB[i], recordSupplier[i], recordProduct[i], recordSize[i], recordPrice[i], recordQuantity[i], recordGongga[i], recordBuga[i], recordHapgye[i]);
+                            mainWindow.amountSum += recordQuantity[i];
+                            mainWindow.gonggaSum += recordGongga[i];
+                            mainWindow.bugaSum += recordBuga[i];
+                            mainWindow.hapgyeSum += recordHapgye[i];
+                            mainWindow.ipamountSum += recordIpAmount[i];
+                            mainWindow.misuSum += recordMisu[i];
+                            mainWindow.combinedModel.push({
+                                gb: recordGB[i],
+                                date: recordDate[i],
+                                supplier: recordSupplier[i],
+                                product: recordProduct[i],
+                                size: recordSize[i],
+                                price: recordPrice[i],
+                                quantity: recordQuantity[i],
+                                gongga: recordGongga[i],
+                                buga: recordBuga[i],
+                                hapgye: recordHapgye[i],
+                                ipdate: recordIpdate[i],
+                                ipamount: recordIpAmount[i],
+                                misu: recordMisu[i],
+                                rows: recordRows[i]
+                            })
+
+                        }
+                        // console.log(JSON.stringify(mainWindow.combinedModel))
+                        mainWindow.combinedModel = mainWindow.combinedModel
+
+                    }
+                    else {
+                        searchFailed.open();
+                        console.log("search failed");
+                    }
+                }
+            }
+
+            Popup {
+                id: searchFailed
+                width: 100
+                height: 100
+
+                modal: true
+                closePolicy: Popup.CloseOnPressOutside
+                contentItem: Column {
+                    Text {
+                        text: qsTr("조건에 맞는 값 없음")
+                    }
+                    Button {
+                        text: qsTr("X")
+                        onClicked: searchFailed.close()
+                    }
+                }
+
+            }
+
+            Button {
+                id: addIpgeumRecord
+                text: qsTr("입금정보 입력")
+
+                onClicked: searchResultList.searchClicked?ipgeumPopup.open():console.log("no")
+
+            }
+
+            Popup {
+                id: ipgeumPopup
+                width: 400
+                height: 50
+
+                modal: true
+                closePolicy: Popup.CloseOnPressOutside
+                contentItem: Row {
+                    Text {
+                        text: qsTr("입금일 입력")
+                    }
+                    TextField {
+                        id: ipgeumDate
+                        placeholderText: qsTr("YYYY-MM-DD")
+                    }
+                    Text {
+                        text: qsTr("입금액 입력")
+                    }
+                    TextField {
+                        id: ipgeumAmount
+
+                    }
+                    Button {
+                        id: ipgeumAdd
+                        text: qsTr("입력")
+                        onClicked: {
+                            excelData.writeRecordIp(ipgeumDate.text, ipgeumAmount.text, searchResultList.selectedRow)
+                        }
+                    }
+                    Button {
+                        id: ipgeumCloseButton
+                        text: qsTr("X")
+                        onClicked: ipgeumPopup.close()
+                    }
+                }
+
+            }
+        }
+
+        Rectangle {
+            id: searchSum
+            width: mainWindow.width - 50
+            height: 100
+
+            ColumnLayout {
+                width: 5
+                RowLayout {
+                    width: 5
+                    Text {
+                        text: qsTr("거래 내역 수")
+                    }
+                    Text {
+                        text: qsTr("수량")
+                    }
+                    Text {
+                        text: qsTr("공급가액")
+                    }
+                    Text {
+                        text: qsTr("부가세액")
+                    }
+                    Text {
+                        text: qsTr("합계금액")
+                    }
+                    Text {
+                        text: qsTr("수금액")
+                    }
+                    Text {
+                        text: qsTr("미수금액")
+                    }
+                }
+                RowLayout {
+                    width: 5
+
+                    Text {
+                        text: mainWindow.gaesoo
+                    }
+                    Text {
+                        text: mainWindow.amountSum
+                    }
+                    Text {
+                        text: mainWindow.gonggaSum
+                    }
+                    Text {
+                        text: mainWindow.bugaSum
+                    }
+                    Text {
+                        text: mainWindow.hapgyeSum
+                    }
+                    Text {
+                        text: mainWindow.ipamountSum
+                    }
+                    Text {
+                        text: mainWindow.misuSum
+                    }
+                }
+            }
+        }
+
+        Rectangle {
+            id: searchResult
+            width: mainWindow.width - 50
+            height: mainWindow.height - 300
+            ColumnLayout {
+            RowLayout {
+                width: parent.width
+                spacing: 5
+
+                Text {
+                    text: qsTr("구분")
+                    Layout.preferredWidth: 40
+                }
+
+                Text {
+
+                    text: qsTr("거래일자")
+                }
+
+                Text {
+
+                    text: qsTr("거래처명")
+                }
+
+                Text {
+
+                    text: qsTr("상품명")
+                }
+
+                Text {
+
+                    text: qsTr("규격")
+                }
+
+                Text {
+
+                    text: qsTr("단가")
+                }
+
+                Text {
+
+                    text: qsTr("수량")
+                }
+
+                Text {
+
+                    text: qsTr("공급가액")
+                }
+
+                Text {
+
+                    text: qsTr("부가세액")
+                }
+
+                Text {
+
+                    text: qsTr("합계금액")
+                }
+
+                Text {
+
+                    text: qsTr("입금일")
+                }
+
+                Text {
+
+                    text: qsTr("입금액")
+                }
+
+                Text {
+                    text: qsTr("미수금액")
+                }
+            }
+
+            ListView {
+                id: searchResultList
+                property bool searchClicked: false
+                property int selectedRow        //입금일, 입금액 추가할때 몇번째줄인지 저장할 변수
+                width: searchResult.width - 10
+                height: searchResult.height - 10
+                anchors.centerIn: searchResult
+
+                model: mainWindow.combinedModel
+
+                delegate: ItemDelegate {
+                    width: parent.width
+                    height: 35
+                    onClicked: {
+                        searchResultList.selectedRow = modelData.rows
+                        searchResultList.searchClicked = true
+                        console.log("clicked:", modelData.rows)
+
+                    }
+                    Row {
+                        width: parent.width
+                        spacing: 5
+
+                        Text {
+                            id: gooboon1
+                            text: modelData.gb
+                            //Layout.preferredWidth: 40
+                        }
+
+                        Text {
+                            id: date1
+                            text: modelData.date
+                        }
+
+                        Text {
+                            id: supplier1
+                            text: modelData.supplier
+                        }
+
+                        Text {
+                            id: product1
+                            text: modelData.product
+                        }
+
+                        Text {
+                            id: size1
+                            text: modelData.size
+                        }
+
+                        Text {
+                            id: price1
+                            text: modelData.price
+                        }
+
+                        Text {
+                            id: quan1
+                            text: modelData.quantity
+                        }
+
+                        Text {
+                            id: gongga1
+                            text: modelData.gongga
+                        }
+
+                        Text {
+                            id: buga1
+                            text: modelData.buga
+                        }
+
+                        Text {
+                            id: hapgye1
+                            text: modelData.hapgye
+                        }
+
+                        Text {
+                            id: ipdate1
+                            text: modelData.ipdate
+                        }
+
+                        Text {
+                            id: ipamount1
+                            text: modelData.ipamount
+                        }
+
+                        Text {
+                            id: misu1
+                            text: modelData.misu
+                        }
+                    }
+                }
+
+
+
+            }
+
+            }
+
+        }
+    }
+
+
+}

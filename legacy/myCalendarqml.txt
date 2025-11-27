@@ -1,0 +1,131 @@
+//myCalendar 원래코드
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+
+
+Column {
+    //id: calendar
+    spacing: 10
+
+    property date selectedDate: new Date()
+    property int year : selectedDate.getFullYear()
+    property int month : selectedDate.getMonth() + 1
+    property int calendarParent     //0이면 calendarButton, 1이면 searchCalendar1, 2이면 searchCalendar2
+
+    Row {
+
+            width: parent.width
+
+
+            spacing: 10
+            layoutDirection: Qt.LeftToRight
+
+
+
+            // 연도 섹션
+            Item { Layout.fillWidth: true } // 빈 공간 (Spacer 역할)
+            Button { text: "<"; onClicked: year-- }
+            Text { text: qsTr("%1년").arg(year); font.pixelSize: 18 }
+            Button { text: ">"; onClicked: year++ }
+            Item { Layout.fillWidth: true } // 빈 공간
+
+            // 월 섹션
+            Item { Layout.fillWidth: true } // 빈 공간
+            Button {
+                text: "<";
+                onClicked: { if (month === 1) { year--; month = 12; } else { month--; } }
+            }
+            Text { text: qsTr("%1월").arg(month); font.pixelSize: 18 }
+            Button {
+                text: ">";
+                onClicked: { if (month === 12) { year++; month = 1; } else { month++; } }
+            }
+            Item { Layout.fillWidth: true } // 빈 공간
+            Button {
+                text: "X"
+
+                onClicked: {
+                    if(calendarParent === 0) {
+                        calendarPopup.close()
+                    }
+                    else if(calendarParent === 1) {
+                        scalendarPopup1.close()
+                    }
+                    else if(calendarParent === 2) {
+                        scalendarPopup2.close()
+                    }
+                }
+            }
+
+
+        }
+
+
+    DayOfWeekRow {
+        locale: Qt.locale("ko_KR")
+        delegate: Text {
+            text: model.shortName
+            width: 30
+            horizontalAlignment: Text.AlignHCenter
+            font.bold: true
+        }
+    }
+
+    MonthGrid {
+        id: grid
+
+        year: parent.year
+        month: parent.month - 1
+        locale: Qt.locale("ko_KR")
+        property date selectedDate: parent.selectedDate
+
+
+        delegate: Button {
+            width: 30; height: 30
+
+
+
+            background: Rectangle {
+                    color: {
+                        // visible 속성 대신 background 색상을 조건부로 설정하는 방식도 많이 사용됩니다.
+                        if (model.date.getMonth() !== grid.month)
+                            return "gray" // 현재 달이 아니면 회색
+
+                        // 현재 달이면 선택 여부에 따라 색상 지정
+                        return model.date === grid.selectedDate ? "#0078d4" : "lightgray"
+                    }
+
+                    // 버튼의 기본 테두리 제거 (선택 사항)
+                    border.color: "transparent"
+                    radius: 4
+                }
+
+            onClicked: {
+                //console.log(model.date)
+                grid.selectedDate = model.date
+
+                if(calendarParent === 0) {
+                    calendarButton.currentDate = model.date
+                }
+                else if(calendarParent === 1) {
+                    searchCalendarFirst.currentDate = model.date
+                }
+                else if(calendarParent === 2) {
+                    searchCalendarSecond.currentDate = model.date
+                }
+
+                //calendarButton.currentDate = model.date
+                console.log(calendarParent)
+
+            }
+            Text {      //날짜 텍스트
+                anchors.centerIn: parent
+                text: model.date.getDate()
+                color: parent.color === "#0078d4" ? "white" : "black"
+            }
+
+
+        }
+    }
+}

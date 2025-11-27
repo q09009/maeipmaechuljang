@@ -1,0 +1,5 @@
+#빌드 폴더 전체 제외
+build/
+
+# Qt Creator가 생성하는 사용자 설정 파일 제외
+.qtcreator/
