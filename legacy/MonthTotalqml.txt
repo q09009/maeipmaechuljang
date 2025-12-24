@@ -1,0 +1,373 @@
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+Window {
+    id: mtWindow
+    width: 600
+    height: 600
+    visible: false // 기본적으로는 숨김 상태
+    title: "월별 통계" // 창 제목
+
+
+    flags: Qt.Window | Qt.WindowTitleHint | Qt.WindowSystemMenuHint
+        | Qt.WindowMinMaxButtonsHint | Qt.WindowCloseButtonHint
+    Rectangle {
+        id: mtroot
+
+        anchors.fill: parent
+
+        property var mtModel: [];
+        property var mtBungi: [];
+        property var mtBangi: [];
+        ColumnLayout {
+            spacing: 10
+            RowLayout {
+                //콤보박스들
+                spacing: 10
+                ComboBox {
+                    id: mtYearComboBox
+                    Layout.preferredWidth: 70 // Layout 크기 제어
+                    Layout.preferredHeight: 25
+                    model: Array.from({length: 41}, (v, i) => (2010 + i).toString())        //2010년부터 2050년까지, i는 0부터시작
+                    currentIndex: 0
+                    onActivated: (index) => {console.log("선택된 옵션:", mtYearComboBox.currentText);}
+
+                    popup: Popup {
+                        y: mtYearComboBox.height - 1
+                        width: mtYearComboBox.width
+                        height: Math.min(contentItem.implicitHeight, 600)
+                        padding: 1
+                        contentItem: ListView {
+                            clip: true
+                            implicitHeight: contentHeight
+                            model: mtYearComboBox.popup.visible ? mtYearComboBox.delegateModel : null
+                            currentIndex: mtYearComboBox.highlightedIndex
+                            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AlwaysOn }
+                        }
+                    }
+                }
+
+                ComboBox {
+                    id: mtGBComboBox
+                    Layout.preferredWidth: 60 // Layout 크기 제어
+                    Layout.preferredHeight: 25
+                    model: ["매입", "매출"]
+                    currentIndex: 0
+                    onActivated: (index) => {console.log("선택된 옵션:", mtGBComboBox.currentText);}
+
+                    popup: Popup {
+                        y: mtGBComboBox.height - 1
+                        width: mtGBComboBox.width
+                        height: Math.min(contentItem.implicitHeight, 600)
+                        padding: 1
+                        contentItem: ListView {
+                            clip: true
+                            implicitHeight: contentHeight
+                            model: mtGBComboBox.popup.visible ? mtGBComboBox.delegateModel : null
+                            currentIndex: mtGBComboBox.highlightedIndex
+                            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AlwaysOn }
+                        }
+                    }
+                }
+
+                ComboBox {
+                    id: mtSupplierComboBox
+                    Layout.preferredWidth: 150 // Layout 크기 제어
+                    Layout.preferredHeight: 25
+                    model: mainWindow.supplierSearchList
+                    currentIndex: 0
+                    onActivated: (index) => {console.log("선택된 옵션:", mtSupplierComboBox.currentText);}
+
+                    popup: Popup {
+                        y: mtSupplierComboBox.height - 1
+                        width: mtSupplierComboBox.width
+                        height: Math.min(contentItem.implicitHeight, 600)
+                        padding: 1
+                        contentItem: ListView {
+                            clip: true
+                            implicitHeight: contentHeight
+                            model: mtSupplierComboBox.popup.visible ? mtSupplierComboBox.delegateModel : null
+                            currentIndex: mtSupplierComboBox.highlightedIndex
+                            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AlwaysOn }
+                        }
+                    }
+                }
+
+                ComboBox {
+                    id: mtProductComboBox
+                    Layout.preferredWidth: 200 // Layout 크기 제어
+                    Layout.preferredHeight: 25
+                    model: mainWindow.productSearchList
+                    currentIndex: 0
+                    onActivated: (index) => {console.log("선택된 옵션:", mtProductComboBox.currentText);}
+
+                    popup: Popup {
+                        y: mtProductComboBox.height - 1
+                        width: mtProductComboBox.width
+                        height: Math.min(contentItem.implicitHeight, 600)
+                        padding: 1
+                        contentItem: ListView {
+                            clip: true
+                            implicitHeight: contentHeight
+                            model: mtProductComboBox.popup.visible ? mtProductComboBox.delegateModel : null
+                            currentIndex: mtProductComboBox.highlightedIndex
+                            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AlwaysOn }
+                        }
+                    }
+                }
+                Button {
+                    id: mtButton
+                    text: qsTr("검색")
+                    onClicked: {
+                        excelData.getMonthTotal(mtYearComboBox.currentText, mtGBComboBox.currentText, mtSupplierComboBox.currentText, mtProductComboBox.currentText);
+
+                        mtroot.mtModel = [];
+                        mtroot.mtBungi = [];
+                        mtroot.mtBangi = [];
+
+                        var tempModel = [];
+                        var tbun = [];
+                        var tban = [];
+                        var tempa = excelData.getMTAmount();
+                        var tempg = excelData.getMTGongga();
+                        var tempb = excelData.getMTBuga();
+                        var temph = excelData.getMTHapgye();
+                        var tempm = excelData.getMTMisu();
+
+                        var tempbungia=0;
+                        var tempbungig=0;
+                        var tempbungib=0;
+                        var tempbungih=0;
+                        var tempbungim=0;
+                        var tempbangia=0;
+                        var tempbangig=0;
+                        var tempbangib=0;
+                        var tempbangih=0;
+                        var tempbangim=0;
+                        var bangiasum=0;
+                        var bangigsum=0;
+                        var bangibsum=0;
+                        var bangihsum=0;
+                        var bangimsum=0;
+                        var tempbangi = ["상반기", "하반기", "총합"];
+
+                        for(let i=0;i<tempa.length;i++) {
+                            tempModel.push({amount: tempa[i], gongga: tempg[i], buga: tempb[i], hapgye: temph[i], misu: tempm[i]})
+                             //console.log(i+1, "월");
+                             //console.log(tempa[i], tempg[i], tempb[i], temph[i], tempm[i]);
+                            tempbungia += tempa[i];
+                            tempbungig += tempg[i];
+                            tempbungib += tempb[i];
+                            tempbungih += temph[i];
+                            tempbungim += tempm[i];
+                            tempbangia += tempa[i];
+                            tempbangig += tempg[i];
+                            tempbangib += tempb[i];
+                            tempbangih += temph[i];
+                            tempbangim += tempm[i];
+                        if((i+1) % 3 == 0) {
+                            tbun.push({amount: tempbungia, gongga: tempbungig, buga: tempbungib, hapgye: tempbungih, misu: tempbungim})
+                             // console.log((i+1)/3, "분기");
+                             // console.log(tempbungia, tempbungig, tempbungib, tempbungih, tempbungim);
+                            tempbungia = 0;
+                            tempbungig = 0;
+                            tempbungib = 0;
+                            tempbungih = 0;
+                            tempbungim = 0;
+                            }
+                        if((i+1) % 6 == 0) {
+                            tban.push({amount: tempbangia, gongga: tempbangig, buga: tempbangib, hapgye: tempbangih, misu: tempbangim, bg: tempbangi[(i+1)/6-1]})
+                             // console.log((i+1)/6, "반기");
+                             // console.log(tempbangia, tempbangig, tempbangib, tempbangih, tempbangim);
+                            bangiasum += tempbangia;
+                            bangigsum += tempbangig;
+                            bangibsum += tempbangib;
+                            bangihsum += tempbangih;
+                            bangimsum += tempbangim;
+                            tempbangia = 0;
+                            tempbangig = 0;
+                            tempbangib = 0;
+                            tempbangih = 0;
+                            tempbangim = 0;
+                        }
+                    }
+
+                    tban.push({amount: bangiasum, gongga: bangigsum, buga: bangibsum, hapgye: bangihsum, misu: bangimsum, bg: tempbangi[2]})
+
+                    mtroot.mtModel = tempModel;
+                    mtroot.mtBungi = tbun;
+                    mtroot.mtBangi = tban;
+                    console.log("=== mtModel 최종 데이터 확인 ===");
+                    console.log(JSON.stringify(mtroot.mtModel, null, 2));
+                    }
+                }
+            }
+
+            RowLayout {
+                //헤더 부분
+                Layout.fillWidth: true
+                Layout.preferredHeight: 30 //헤더 높이
+
+                spacing: 0
+
+                component HeaderCell: Rectangle {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    //color: "#FFCC80" // 헤더 배경색 (살구색)
+                    border.color: "#EF6C00"
+                    border.width: 1
+                    property alias text: label.text
+                    Text {
+                        id: label
+                        anchors.centerIn: parent
+                        font.bold: true
+                    }
+                }
+                // 각 컬럼 정의 (너비를 다르게 주고 싶으면 Layout.preferredWidth 사용)
+                HeaderCell { text: "구분"; Layout.preferredWidth: 80; Layout.fillWidth: false } // 고정 너비
+                HeaderCell { text: "수량"; Layout.preferredWidth: 80; }
+                HeaderCell { text: "공급가액"; Layout.preferredWidth: 130; }
+                HeaderCell { text: "부가세액"; Layout.preferredWidth: 80; }
+                HeaderCell { text: "합계금액"; Layout.preferredWidth: 130; }
+                HeaderCell { text: "미수금액"; Layout.preferredWidth: 130; }
+            }
+            component ListText: Text {
+                verticalAlignment: Text.AlignVCenter
+                font.pixelSize: 13
+                elide: Text.ElideRight
+                leftPadding: 5; rightPadding: 5
+            }
+            component NumText: ListText { horizontalAlignment: Text.AlignRight }
+
+            ListView {
+                //1월부터 12월까지
+                Layout.fillWidth: true
+                Layout.preferredHeight: 300
+                clip: true
+                model: mtroot.mtModel
+
+                delegate: Rectangle {
+                    width: parent.width
+                    height: 30
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 5; anchors.rightMargin: 5
+
+                        ListText {
+                            text: (index + 1) + "월"
+                            Layout.preferredWidth: 80
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                        NumText {
+                            text: parseInt(modelData.amount).toLocaleString(Qt.locale(), 'f', 0)
+                            Layout.preferredWidth: 80
+                        }
+                        NumText {
+                            text: parseInt(modelData.gongga).toLocaleString(Qt.locale(), 'f', 0)
+                            Layout.preferredWidth: 130
+                        }
+                        NumText {
+                            text: parseInt(modelData.buga).toLocaleString(Qt.locale(), 'f', 0)
+                            Layout.preferredWidth: 80
+                        }
+                        NumText {
+                            text: parseInt(modelData.hapgye).toLocaleString(Qt.locale(), 'f', 0)
+                            Layout.preferredWidth: 130
+                        }
+                        NumText {
+                            text: parseInt(modelData.misu).toLocaleString(Qt.locale(), 'f', 0)
+                            Layout.preferredWidth: 130
+                        }
+                    }
+                }
+            }
+
+            ListView {
+                //분기별, 1/4~4/4
+                Layout.fillWidth: true
+                Layout.preferredHeight: 100
+                clip: true
+                model: mtroot.mtBungi
+
+                delegate: Rectangle {
+                    width: parent.width
+                    height: 20
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 5; anchors.rightMargin: 5
+
+                        ListText {
+                            text: (index + 1) + "/4분기"
+                            Layout.preferredWidth: 80
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                        NumText {
+                            text: parseInt(modelData.amount).toLocaleString(Qt.locale(), 'f', 0)
+                            Layout.preferredWidth: 80
+                        }
+                        NumText {
+                            text: parseInt(modelData.gongga).toLocaleString(Qt.locale(), 'f', 0)
+                            Layout.preferredWidth: 130
+                        }
+                        NumText {
+                            text: parseInt(modelData.buga).toLocaleString(Qt.locale(), 'f', 0)
+                            Layout.preferredWidth: 80
+                        }
+                        NumText {
+                            text: parseInt(modelData.hapgye).toLocaleString(Qt.locale(), 'f', 0)
+                            Layout.preferredWidth: 130
+                        }
+                        NumText {
+                            text: parseInt(modelData.misu).toLocaleString(Qt.locale(), 'f', 0)
+                            Layout.preferredWidth: 130
+                        }
+                    }
+                }
+            }
+
+            ListView {
+                //상반기, 하반기, 연간
+                Layout.fillWidth: true
+                Layout.preferredHeight: 70
+                clip: true
+                model: mtroot.mtBangi
+
+                delegate: Rectangle {
+                    width: parent.width
+                    height: 20
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 5; anchors.rightMargin: 5
+
+                        ListText {
+                            text: modelData.bg;
+                            Layout.preferredWidth: 80
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                        NumText {
+                            text: parseInt(modelData.amount).toLocaleString(Qt.locale(), 'f', 0)
+                            Layout.preferredWidth: 80
+                        }
+                        NumText {
+                            text: parseInt(modelData.gongga).toLocaleString(Qt.locale(), 'f', 0)
+                            Layout.preferredWidth: 130
+                        }
+                        NumText {
+                            text: parseInt(modelData.buga).toLocaleString(Qt.locale(), 'f', 0)
+                            Layout.preferredWidth: 80
+                        }
+                        NumText {
+                            text: parseInt(modelData.hapgye).toLocaleString(Qt.locale(), 'f', 0)
+                            Layout.preferredWidth: 130
+                        }
+                        NumText {
+                            text: parseInt(modelData.misu).toLocaleString(Qt.locale(), 'f', 0)
+                            Layout.preferredWidth: 130
+                        }
+                    }
+                }
+            }
+
+        }
+    }
+}
