@@ -14,6 +14,8 @@ ApplicationWindow {
     property string dataFilePath: "data/data.xlsx"
     property list<string> supplierList
     property list<string> productList
+    property list<string> supplierSearchList
+    property list<string> productSearchList
     property list<string> sizeList
     property list<string> priceList
 
@@ -27,7 +29,15 @@ ApplicationWindow {
     property list<int> readRows
     property var combinedModel: []
 
+    property int ipgeumAmount1: 0
+    property int ipgeumAmount2: 0
+    property int ipgeumAmount3: 0
+    property var ipgeumDate1
+    property var ipgeumDate2
+    property var ipgeumDate3
+
     Component.onCompleted: {
+        //console.log(excelData.test());
         if (excelData.loadExcelData(dataFilePath)) {
             var suppliers = excelData.getDataName();
             var products = excelData.getDataProduct();
@@ -38,16 +48,22 @@ ApplicationWindow {
 
             for(let i=0;i<suppliers.length;i++) {
                 if(suppliers[i] === "") break;
-                else mainWindow.supplierList.push(suppliers[i]);
+                else {
+                    mainWindow.supplierList.push(suppliers[i]);
+                    mainWindow.supplierSearchList.push(suppliers[i]);
+                }
             }
 
             for(let j=0;j<products.length;j++) {
                 mainWindow.productList.push(products[j]);
+                mainWindow.productSearchList.push(products[j]);
                 mainWindow.sizeList.push(sizes[j]);
                 mainWindow.priceList.push(prices[j]);
             }
+            mainWindow.supplierSearchList.push("전체");
+            mainWindow.productSearchList.push("전체");
         } else {
-            console.log("로드 실패! 경로를 확인하세요.");
+            excelData.makeExcels();
         }
     }
 
@@ -59,8 +75,8 @@ ApplicationWindow {
             MenuItem { text: qsTr("상품 추가"); onTriggered: productAddPopup.open() }
         }
         Menu {
-            title: qsTr("yees")
-            Action { text: qsTr("yeee") }
+            title: qsTr("통계")
+            MenuItem { text: qsTr("월별통계"); onTriggered: monthStat.show() }
         }
     }
 
@@ -108,6 +124,9 @@ ApplicationWindow {
             Button { text: qsTr("X"); onClicked: productAddPopup.close() }
         }
     }
+    MonthTotal {
+        id: monthStat
+    }
 
     Popup {
         id: recordAddedPopup
@@ -135,24 +154,38 @@ ApplicationWindow {
 
     Popup {
         id: ipgeumPopup
+
+
         width: 400; height: 120
         anchors.centerIn: parent
         modal: true
         closePolicy: Popup.CloseOnPressOutside
         contentItem: ColumnLayout {
             RowLayout {
-                Text { text: qsTr("입금일") }
-                TextField { id: ipgeumDate; placeholderText: qsTr("YYYY-MM-DD"); Layout.fillWidth: true }
+                Text { text: qsTr("입금일1") }
+                TextField { id: ipgeumDate1; placeholderText: qsTr("YYYY-MM-DD"); text:mainWindow.ipgeumDate1==="" ? "" : mainWindow.ipgeumDate1 ; Layout.fillWidth: true }
+                Text { text: qsTr("입금액1") }
+                TextField { id: ipgeumAmount1; text:mainWindow.ipgeumAmount1 ; Layout.fillWidth: true }
             }
             RowLayout {
-                Text { text: qsTr("입금액") }
-                TextField { id: ipgeumAmount; Layout.fillWidth: true }
+                Text { text: qsTr("입금일2") }
+                TextField { id: ipgeumDate2; placeholderText: qsTr("YYYY-MM-DD"); text:mainWindow.ipgeumDate2==="" ? "" : mainWindow.ipgeumDate2 ; Layout.fillWidth: true }
+                Text { text: qsTr("입금액2") }
+                TextField { id: ipgeumAmount2; text:mainWindow.ipgeumAmount2 ; Layout.fillWidth: true }
+            }
+            RowLayout {
+                Text { text: qsTr("입금일3") }
+                TextField { id: ipgeumDate3; placeholderText: qsTr("YYYY-MM-DD"); text:mainWindow.ipgeumDate3==="" ? "" : mainWindow.ipgeumDate3 ; Layout.fillWidth: true }
+                Text { text: qsTr("입금액3") }
+                TextField { id: ipgeumAmount3; text:mainWindow.ipgeumAmount3 ; Layout.fillWidth: true }
             }
             RowLayout {
                 Layout.alignment: Qt.AlignRight
+
+
                 Button {
                     text: qsTr("입력")
-                    onClicked: { excelData.writeRecordIp(ipgeumDate.text, ipgeumAmount.text, searchResultList.selectedRow); ipgeumPopup.close(); }
+                    onClicked: { excelData.writeRecordIp(ipgeumDate1.text, ipgeumAmount1.text, ipgeumDate2.text, ipgeumAmount2.text, ipgeumDate3.text, ipgeumAmount3.text, searchResultList.selectedRow); ipgeumPopup.close(); }
                 }
                 Button { text: qsTr("취소"); onClicked: ipgeumPopup.close() }
             }
@@ -313,7 +346,7 @@ ApplicationWindow {
                     id: searchSupplierComboBox
                     Layout.preferredWidth: 180
                     Layout.preferredHeight: 25
-                    model: supplierList
+                    model: supplierSearchList
                     currentIndex: 0
                     onActivated: (index) => { console.log("선택된 옵션:", searchSupplierComboBox.currentText); }
 
@@ -336,7 +369,7 @@ ApplicationWindow {
                     id: searchProductComboBox
                     Layout.preferredWidth: 180
                     Layout.preferredHeight: 25
-                    model: productList
+                    model: productSearchList
                     currentIndex: 0
                     onActivated: (index) => { console.log("선택된 옵션번호:", searchProductComboBox.currentIndex); }
 
@@ -407,7 +440,9 @@ ApplicationWindow {
                         }
                     }
                 }
-                Button { id: addIpgeumRecord; text: qsTr("💰 입금처리"); onClicked: searchResultList.searchClicked ? ipgeumPopup.open() : console.log("no") }
+                Button { id: addIpgeumRecord; text: qsTr("💰 입금처리");
+                    onClicked: searchResultList.searchClicked ? ipgeumPopup.open() : console.log("no")
+                }
             }
         }
 
@@ -444,7 +479,7 @@ ApplicationWindow {
                 SummaryItem { title: "총 합계금액"; value: mainWindow.hapgyeSum.toLocaleString(Qt.locale(), 'f', 0); valColor: "blue" }
                 Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: "#ccc" }
                 SummaryItem { title: "총 입금액"; value: mainWindow.ipamountSum.toLocaleString(Qt.locale(), 'f', 0) }
-                SummaryItem { title: "총 미수금"; value: mainWindow.misuSum.toLocaleString(Qt.locale(), 'f', 0); valColor: "red" }
+                SummaryItem { title: `총 ${mainWindow.misuSum>=0 ? "미" : "선"}수금`; value: mainWindow.misuSum>=0 ? mainWindow.misuSum.toLocaleString(Qt.locale(), 'f', 0) : Math.abs(mainWindow.misuSum).toLocaleString(Qt.locale(), 'f', 0); valColor: mainWindow.misuSum<=0 ? "blue" : "red" }
                 Item { Layout.fillWidth: true }
             }
         }
@@ -506,9 +541,9 @@ ApplicationWindow {
                         Rectangle { width: 1; height: 20; color: "#ddd" }
                         HeaderText { text: "합계"; Layout.preferredWidth: 80 }
                         Rectangle { width: 1; height: 20; color: "#ddd" }
-                        HeaderText { text: "입금일"; Layout.preferredWidth: 90 }
+                        HeaderText { text: "최근입금일"; Layout.preferredWidth: 90 }
                         Rectangle { width: 1; height: 20; color: "#ddd" }
-                        HeaderText { text: "입금액"; Layout.preferredWidth: 70 }
+                        HeaderText { text: "누적입금액"; Layout.preferredWidth: 70 }
                         Rectangle { width: 1; height: 20; color: "#ddd" }
                         HeaderText { text: "미수금"; Layout.preferredWidth: 70 }
 
@@ -548,6 +583,19 @@ ApplicationWindow {
                                 searchResultList.selectedRow = modelData.rows
                                 searchResultList.searchClicked = true
                                 console.log("clicked:", modelData.rows)
+                                mainWindow.ipgeumAmount1 = 0;
+                                mainWindow.ipgeumDate1 = "";
+                                mainWindow.ipgeumAmount2 = 0;
+                                mainWindow.ipgeumDate2 = "";
+                                mainWindow.ipgeumAmount3 = 0;
+                                mainWindow.ipgeumDate3 = "";
+                                excelData.readRecordIpGeum(searchResultList.selectedRow);
+                                mainWindow.ipgeumAmount1 = excelData.getipAmount1();
+                                mainWindow.ipgeumDate1 = excelData.getipDate1();
+                                mainWindow.ipgeumAmount2 = excelData.getipAmount2();
+                                mainWindow.ipgeumDate2 = excelData.getipDate2();
+                                mainWindow.ipgeumAmount3 = excelData.getipAmount3();
+                                mainWindow.ipgeumDate3 = excelData.getipDate3();
                             }
                         }
 

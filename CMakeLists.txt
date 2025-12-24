@@ -21,6 +21,7 @@ qt_add_qml_module(appmaeipmaechuljang
         QML_FILES qml/MyCalendar.qml
         SOURCES datahandler.h
         SOURCES datahandler.cpp
+        QML_FILES qml/MonthTotal.qml
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.

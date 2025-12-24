@@ -2,7 +2,9 @@
 #include <QDebug>
 #include <QVariant>
 #include <QString>
+#include <QDir>
 #include <vector>
+#include <algorithm>
 
 DataHandler::DataHandler(QObject *parent) : QObject(parent)
 {
@@ -35,6 +37,43 @@ bool DataHandler::loadExcelData(const QString &filePath)
 
     qDebug() << "엑셀 데이터 로드 성공. 업체 수:" << dataName.size();
     return true;
+}
+
+void DataHandler::makeExcels() {
+    QDir dir;
+    QXlsx::Document data;
+    QXlsx::Document record;
+    data.write("A1", "거래처명");
+    data.write("B1", "상품명");
+    data.write("C1", "규격");
+    data.write("D1", "단가");
+    record.write("A1", "구분");
+    record.write("B1", "거래일자");
+    record.write("C1", "거래처명");
+    record.write("D1", "상품명");
+    record.write("E1", "규격");
+    record.write("F1", "단가");
+    record.write("G1", "수량");
+    record.write("H1", "공급가액");
+    record.write("I1", "부가세액");
+    record.write("J1", "합계금액");
+    record.write("K1", "입금일1");
+    record.write("L1", "입금액1");
+    record.write("M1", "미수금액");
+    record.write("N1", "입금일2");
+    record.write("O1", "입금액2");
+    record.write("P1", "입금일3");
+    record.write("Q1", "입금액3");
+    if (!dir.exists("data")) { // 폴더가 이미 있는지 확인
+        if (dir.mkdir("data")) {
+            qDebug() << "폴더 생성 성공!";
+        } else {
+            qDebug() << "폴더 생성 실패";
+        }
+    }
+
+    data.saveAs("data/data.xlsx");
+    record.saveAs("data/record.xlsx");
 }
 
 int maxNameRow;
@@ -137,32 +176,72 @@ void DataHandler::writeExcelRecord(bool mae, const QVariant &date, const QVarian
     doc.write(row, 8, gongga);
     doc.write(row, 9, tax);
     doc.write(row, 10, gongga.toInt() + tax.toInt());
+    doc.write(row, 13, gongga.toInt() + tax.toInt());
 
 
     doc.save();
+}
+// ----------------------------------------------------
+// 레코드 입금일, 입금액 읽어오기 로직 (record.xlsx)
+// ----------------------------------------------------
+void DataHandler::readRecordIpGeum(const QVariant &row) {
+    ipDate1.clear();
+    ipAmount1.clear();
+    ipDate2.clear();
+    ipAmount2.clear();
+    ipDate3.clear();
+    ipAmount3.clear();
+
+    QXlsx::Document doc("data/record.xlsx");
+    int rownum = row.toInt();
+
+    QDate date1 = doc.read(rownum, 11).toDate();
+    ipDate1 = date1.toString("yyyy-MM-dd");
+    ipAmount1 = doc.read(rownum, 12);
+    QDate date2 = doc.read(rownum, 14).toDate();
+    ipDate2 = date2.toString("yyyy-MM-dd");
+    ipAmount2 = doc.read(rownum, 15);
+    QDate date3 = doc.read(rownum, 16).toDate();
+    ipDate3 = date3.toString("yyyy-MM-dd");
+    ipAmount3 = doc.read(rownum, 17);
+
 }
 
 // ----------------------------------------------------
 // 레코드 쓰기(입금일, 입금액) 로직 (record.xlsx)
 // ----------------------------------------------------
-void DataHandler::writeRecordIp(const QVariant &date, const QVariant &amount, const QVariant &row) {
+void DataHandler::writeRecordIp(const QVariant &date1, const QVariant &amount1, const QVariant &date2, const QVariant &amount2, const QVariant &date3, const QVariant &amount3, const QVariant &row) {
 
     QXlsx::Document doc("data/record.xlsx");
 
     int rownum = row.toInt();
-    int IpAmount = amount.toInt();
+    int IpAmount1 = amount1.toInt();
+    int IpAmount2 = amount2.toInt();
+    int IpAmount3 = amount3.toInt();
     //Misu는 미수금액
-    int Misu = doc.read(rownum, 10).toInt() - IpAmount;
+    int Misu = doc.read(rownum, 10).toInt() - IpAmount1 - IpAmount2 - IpAmount3;
 
-    QString dateString = date.toString();
+    QString dateString1 = date1.toString();
 
-    QDate myDate = QDate::fromString(dateString, "yyyy-MM-dd");
+    QDate myDate1 = QDate::fromString(dateString1, "yyyy-MM-dd");
+
+    QString dateString2 = date2.toString();
+
+    QDate myDate2 = QDate::fromString(dateString2, "yyyy-MM-dd");
+
+    QString dateString3 = date3.toString();
+
+    QDate myDate3 = QDate::fromString(dateString3, "yyyy-MM-dd");
 
 
 
-    doc.write(rownum, 11, myDate);
-    doc.write(rownum, 12, IpAmount);
+    doc.write(rownum, 11, myDate1);
+    doc.write(rownum, 12, IpAmount1);
     doc.write(rownum, 13, Misu);
+    doc.write(rownum, 14, myDate2);
+    doc.write(rownum, 15, IpAmount2);
+    doc.write(rownum, 16, myDate3);
+    doc.write(rownum, 17, IpAmount3);
 
 
 
@@ -214,13 +293,55 @@ bool DataHandler::readRecordRange(const QVariant &startDate, const QVariant &end
 
 
         if(mae == true) {
-            if(supplierVar == supplier && productVar == product && gooboonVar == "매입" && dateQ>=startDate.toDate() && dateQ<=endDate.toDate()) {
-                resultRows.push_back(row);
+            if(supplier == "전체") {
+                if(product == "전체") {       //매입, supplier전체, product전체
+                    if(gooboonVar == "매입" && dateQ>=startDate.toDate() && dateQ<=endDate.toDate()) {
+                        resultRows.push_back(row);
+                    }
+                }
+                else {              //매입, supplier 전체, product not 전체
+                    if(productVar == product && gooboonVar == "매입" && dateQ>=startDate.toDate() && dateQ<=endDate.toDate()) {
+                        resultRows.push_back(row);
+                    }
+                }
+            }
+            else if(supplier != "전체") {
+                if(product == "전체") {       //매입, supplier not 전체, product전체
+                    if(supplierVar == supplier && gooboonVar == "매입" && dateQ>=startDate.toDate() && dateQ<=endDate.toDate()) {
+                        resultRows.push_back(row);
+                    }
+                }
+                else {              //매입, supplier not  전체, product not 전체
+                    if(supplierVar == supplier && productVar == product && gooboonVar == "매입" && dateQ>=startDate.toDate() && dateQ<=endDate.toDate()) {
+                        resultRows.push_back(row);
+                    }
+                }
             }
         }
         else if(mae == false) {
-            if(supplierVar == supplier && productVar == product && gooboonVar == "매출" && dateQ>=startDate.toDate() && dateQ<=endDate.toDate()) {
-                resultRows.push_back(row);
+            if(supplier == "전체") {
+                if(product == "전체") {       //매출, supplier전체, product전체
+                    if(gooboonVar == "매출" && dateQ>=startDate.toDate() && dateQ<=endDate.toDate()) {
+                        resultRows.push_back(row);
+                    }
+                }
+                else {              //매출, supplier 전체, product not 전체
+                    if(productVar == product && gooboonVar == "매출" && dateQ>=startDate.toDate() && dateQ<=endDate.toDate()) {
+                        resultRows.push_back(row);
+                    }
+                }
+            }
+            else if(supplier != "전체") {
+                if(product == "전체") {       //매출, supplier not 전체, product전체
+                    if(supplierVar == supplier && gooboonVar == "매출" && dateQ>=startDate.toDate() && dateQ<=endDate.toDate()) {
+                        resultRows.push_back(row);
+                    }
+                }
+                else {              //매출, supplier not  전체, product not 전체
+                    if(supplierVar == supplier && productVar == product && gooboonVar == "매출" && dateQ>=startDate.toDate() && dateQ<=endDate.toDate()) {
+                        resultRows.push_back(row);
+                    }
+                }
             }
         }
 
@@ -243,9 +364,16 @@ bool DataHandler::readRecordRange(const QVariant &startDate, const QVariant &end
         QVariant resultGonggaVar = doc.read(resultRows[i], 8);
         QVariant resultBugaVar = doc.read(resultRows[i], 9);
         QVariant resultHapVar = doc.read(resultRows[i], 10);
-        QVariant resultIpdateVar = doc.read(resultRows[i], 11);
-        QDate resultIpdateQ = resultIpdateVar.toDate();
-        QVariant resultIpAmountVar = doc.read(resultRows[i], 12);
+        QVariant resultIpdate1Var = doc.read(resultRows[i], 11);
+        QDate resultIpdate1Q = resultIpdate1Var.toDate();
+        QVariant resultIpdate2Var = doc.read(resultRows[i], 14);
+        QDate resultIpdate2Q = resultIpdate2Var.toDate();
+        QVariant resultIpdate3Var = doc.read(resultRows[i], 16);
+        QDate resultIpdate3Q = resultIpdate3Var.toDate();
+        QDate latest = std::max({resultIpdate1Q, resultIpdate2Q, resultIpdate3Q});
+        QVariant resultIpAmount1Var = doc.read(resultRows[i], 12);
+        QVariant resultIpAmount2Var = doc.read(resultRows[i], 15);
+        QVariant resultIpAmount3Var = doc.read(resultRows[i], 17);
         QVariant resultMisuVar = doc.read(resultRows[i], 13);
         resultGooboon.append(resultGooboonVar.toString());
         resultDate.append(resultDateQ.toString("yyyy-MM-dd"));
@@ -257,8 +385,8 @@ bool DataHandler::readRecordRange(const QVariant &startDate, const QVariant &end
         resultGongga.append(resultGonggaVar.toInt());
         resultBuga.append(resultBugaVar.toInt());
         resultHapgye.append(resultHapVar.toInt());
-        resultIpdate.append(resultIpdateQ.toString("yyyy-MM-dd"));
-        resultIpAmount.append(resultIpAmountVar.toInt());
+        resultIpdate.append(latest.toString("yyyy-MM-dd"));
+        resultIpAmount.append(resultIpAmount1Var.toInt()+resultIpAmount2Var.toInt()+resultIpAmount3Var.toInt());
         resultMisu.append(resultMisuVar.toInt());
         //조건에 맞는 Row들을 따로 저장해둠, 나중에 입금일, 입금액, 미수금액 처리하기 위함
         readResultRows.append(resultRows[i]);
@@ -267,6 +395,159 @@ bool DataHandler::readRecordRange(const QVariant &startDate, const QVariant &end
 
 
     //maxProductRow = row;
+}
+
+void DataHandler::getMonthTotal(const QVariant &year, const QVariant &gb, const QVariant &supplier, const QVariant &product) {
+    QXlsx::Document doc("data/record.xlsx");
+
+    //기존 데이터들 초기화
+    mtAmount.clear();
+    mtGongga.clear();
+    mtBuga.clear();
+    mtHapgye.clear();
+    mtMisu.clear();
+    for(int i=0;i<12;i++) {
+        mtAmount.append(0);
+        mtGongga.append(0);
+        mtBuga.append(0);
+        mtHapgye.append(0);
+        mtMisu.append(0);
+    }
+
+    int row = 2; // 데이터가 2행부터 시작한다고 가정
+    std::vector<int> mtRows;
+    int col_gooboon = 1; // 1열: 구분
+    int col_date = 2; // 2열: 거래일자
+    int col_supplier = 3; // 3열: 거래처명
+    int col_product = 4; // 4열: 상품명
+
+    while (true) {
+        //조건과 비교해볼 자료들
+        QVariant gooboonVar = doc.read(row, col_gooboon);
+        QVariant dateVar = doc.read(row, col_date);
+        QDate dateQ = dateVar.toDate();
+        QVariant supplierVar = doc.read(row, col_supplier);
+        QVariant productVar = doc.read(row, col_product);
+
+        // A열(구분)이 빈 셀이면 반복문 종료
+        if (!gooboonVar.isValid()) {
+            break;
+        }
+
+
+        if(gb == "매입") {
+            if(supplier == "전체") {
+                if(product == "전체") {       //매입, supplier전체, product전체
+                    if(gooboonVar == "매입" && dateQ.year()==year.toInt()) {
+                        mtRows.push_back(row);
+
+                    }
+                }
+                else {              //매입, supplier 전체, product not 전체
+                    if(productVar == product && gooboonVar == "매입" && dateQ.year()==year.toInt()) {
+                        mtRows.push_back(row);
+
+                    }
+                }
+            }
+            else if(supplier != "전체") {
+                if(product == "전체") {       //매입, supplier not 전체, product전체
+                    if(supplierVar == supplier && gooboonVar == "매입" && dateQ.year()==year.toInt()) {
+                        mtRows.push_back(row);
+
+                    }
+                }
+                else {              //매입, supplier not  전체, product not 전체
+                    if(supplierVar == supplier && productVar == product && gooboonVar == "매입" && dateQ.year()==year.toInt()) {
+                        mtRows.push_back(row);
+
+                    }
+                }
+            }
+        }
+        else if(gb == "매출") {
+            if(supplier == "전체") {
+                if(product == "전체") {       //매출, supplier전체, product전체
+                    if(gooboonVar == "매출" && dateQ.year()==year.toInt()) {
+                        mtRows.push_back(row);
+
+                    }
+                }
+                else {              //매출, supplier 전체, product not 전체
+                    if(productVar == product && gooboonVar == "매출" && dateQ.year()==year.toInt()) {
+                        mtRows.push_back(row);
+
+                    }
+                }
+            }
+            else if(supplier != "전체") {
+                if(product == "전체") {       //매출, supplier not 전체, product전체
+                    if(supplierVar == supplier && gooboonVar == "매출" && dateQ.year()==year.toInt()) {
+                        mtRows.push_back(row);
+
+                    }
+                }
+                else {              //매출, supplier not  전체, product not 전체
+                    if(supplierVar == supplier && productVar == product && gooboonVar == "매출" && dateQ.year()==year.toInt()) {
+                        mtRows.push_back(row);
+
+                    }
+                }
+            }
+        }
+
+        row++;
+    }
+
+    for(int i=0;i<mtRows.size();i++) {
+        //resultRows가 조건에 맞는 row니까 거기에 맞는 값들 다 담기
+        QVariant resultDateVar = doc.read(mtRows[i], col_date);
+        QDate resultDateQ = resultDateVar.toDate();
+        int month = resultDateQ.month() - 1;
+        //qDebug() << month;
+        QVariant resultQuanVar = doc.read(mtRows[i], 7);
+        QVariant resultGonggaVar = doc.read(mtRows[i], 8);
+        QVariant resultBugaVar = doc.read(mtRows[i], 9);
+        QVariant resultHapVar = doc.read(mtRows[i], 10);
+        QVariant resultMisuVar = doc.read(mtRows[i], 13);
+
+        mtAmount[month] += resultQuanVar.toInt();
+        mtGongga[month] += resultGonggaVar.toInt();
+        mtBuga[month] += resultBugaVar.toInt();
+        mtHapgye[month] += resultHapVar.toInt();
+        mtMisu[month] += resultMisuVar.toInt();
+
+    }
+}
+
+
+int DataHandler::getRecordRows()
+{
+    QXlsx::Document doc("data/record.xlsx");
+
+    int row = 2; // 데이터가 2행부터 시작한다고 가정
+
+
+    while (true) {
+        QVariant var = doc.read(row, 1);
+
+
+        // A열(구분)이 빈 셀이면 반복문 종료
+        if (!var.isValid()) {
+            break;
+        }
+        row++;
+    }
+    return row;
+}
+
+QVariant DataHandler::test() {
+    QXlsx::Document doc("data/record.xlsx");
+    doc.write(1, 1, "=5+4");
+    doc.save();
+    auto cell = doc.cellAt(1, 1);
+    QVariant val = cell->value();
+    return val;
 }
 // ----------------------------------------------------
 // QML 데이터 반환 함수
@@ -443,4 +724,82 @@ QVariantList DataHandler::getResultMisu() const
 QList<int> DataHandler::getReadResultRows() const
 {
     return readResultRows;
+}
+
+QVariant DataHandler::getipAmount1() const
+{
+    return ipAmount1;
+}
+
+QVariant DataHandler::getipDate1() const
+{
+    return ipDate1;
+}
+QVariant DataHandler::getipAmount2() const
+{
+    return ipAmount2;
+}
+
+QVariant DataHandler::getipDate2() const
+{
+    return ipDate2;
+}
+QVariant DataHandler::getipAmount3() const
+{
+    return ipAmount3;
+}
+
+QVariant DataHandler::getipDate3() const
+{
+    return ipDate3;
+}
+
+QVariantList DataHandler::getMTAmount() const
+{
+    QVariantList list;
+    // QList<QVariant>의 데이터를 QVariantList로 변환하여 QML로 전달
+    for (const QVariant &name : mtAmount) {
+        list.append(QVariant::fromValue(name));
+    }
+    return list;
+}
+
+QVariantList DataHandler::getMTGongga() const
+{
+    QVariantList list;
+    // QList<QVariant>의 데이터를 QVariantList로 변환하여 QML로 전달
+    for (const QVariant &name : mtGongga) {
+        list.append(QVariant::fromValue(name));
+    }
+    return list;
+}
+
+QVariantList DataHandler::getMTBuga() const
+{
+    QVariantList list;
+    // QList<QVariant>의 데이터를 QVariantList로 변환하여 QML로 전달
+    for (const QVariant &name : mtBuga) {
+        list.append(QVariant::fromValue(name));
+    }
+    return list;
+}
+
+QVariantList DataHandler::getMTHapgye() const
+{
+    QVariantList list;
+    // QList<QVariant>의 데이터를 QVariantList로 변환하여 QML로 전달
+    for (const QVariant &name : mtHapgye) {
+        list.append(QVariant::fromValue(name));
+    }
+    return list;
+}
+
+QVariantList DataHandler::getMTMisu() const
+{
+    QVariantList list;
+    // QList<QVariant>의 데이터를 QVariantList로 변환하여 QML로 전달
+    for (const QVariant &name : mtMisu) {
+        list.append(QVariant::fromValue(name));
+    }
+    return list;
 }

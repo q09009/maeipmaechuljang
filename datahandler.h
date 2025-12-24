@@ -4,6 +4,7 @@
 #include <QVariantList>
 
 #include "xlsxdocument.h"
+#include "xlsxcell.h"
 
 #ifndef DATAHANDLER_H
 #define DATAHANDLER_H
@@ -43,6 +44,8 @@ public:
 
     Q_INVOKABLE QList<int> getReadResultRows() const;
 
+    Q_INVOKABLE void makeExcels();
+
     // QML에서 record 엑셀로
     // Q_INVOKABLE QVariantList sendRecord() const;
 
@@ -56,17 +59,44 @@ public:
     // // record파일에 작성(미수금 제외)
     Q_INVOKABLE void writeExcelRecord(bool mae, const QVariant &date, const QVariant &supplier, const QVariant &product, const QVariant &size, const QVariant &price, const QVariant &quantity);
 
-    // record파일에 작성(입금일, 입금액)
-    Q_INVOKABLE void writeRecordIp(const QVariant &date, const QVariant &amount, const QVariant &row);
+    // record파일에 작성(입금일, 입금액) 3개
+    Q_INVOKABLE void writeRecordIp(const QVariant &date1, const QVariant &amount1, const QVariant &date2, const QVariant &amount2, const QVariant &date3, const QVariant &amount3, const QVariant &row);
 
     // // record파일에서 불러옴
     Q_INVOKABLE bool readRecordRange(const QVariant &startDate, const QVariant &endDate, bool mae, const QVariant &supplier, const QVariant &product);
+
+    // record파일에서 입금일, 입금액 불러오기
+    Q_INVOKABLE void readRecordIpGeum(const QVariant &row);
+
+    //입금일하고 입금액들 반환해줄것들
+    Q_INVOKABLE QVariant getipDate1() const;
+    Q_INVOKABLE QVariant getipAmount1() const;
+    Q_INVOKABLE QVariant getipDate2() const;
+    Q_INVOKABLE QVariant getipAmount2() const;
+    Q_INVOKABLE QVariant getipDate3() const;
+    Q_INVOKABLE QVariant getipAmount3() const;
 
     // // data파일에 작성
     // Q_INVOKABLE bool writeExcelData(const QString &filePath);
 
     // QML 호출 가능 함수: C++에서 엑셀 파일을 로드하도록 지시
     Q_INVOKABLE bool loadExcelData(const QString &filePath);
+
+    //월별통계 구하는 함수, 저거를 바탕으로 엑셀에다가 sumproduct 써서 입력
+    Q_INVOKABLE void getMonthTotal(const QVariant &year, const QVariant &gb, const QVariant &supplier, const QVariant &product);
+    //Q_INVOKABLE void readMonthTotal();
+
+    int getRecordRows();
+    //월별통계 반환하는 함수, 입력된거를 읽어오는놈들
+    Q_INVOKABLE QVariantList getMTAmount() const;
+    Q_INVOKABLE QVariantList getMTGongga() const;
+    Q_INVOKABLE QVariantList getMTBuga() const;
+    Q_INVOKABLE QVariantList getMTHapgye() const;
+    Q_INVOKABLE QVariantList getMTMisu() const;
+
+    Q_INVOKABLE QVariant test();
+
+
 
 private:
     // C++ 내부에서 사용할 리스트 변수들
@@ -91,6 +121,21 @@ private:
     QList<QVariant> resultMisu;
 
     QList<int> readResultRows;
+
+    QVariant ipDate1;
+    QVariant ipAmount1;
+    QVariant ipDate2;
+    QVariant ipAmount2;
+    QVariant ipDate3;
+    QVariant ipAmount3;
+
+    QList<int> mtAmount;
+    QList<int> mtGongga;
+    QList<int> mtBuga;
+    QList<int> mtHapgye;
+    QList<int> mtMisu;
+
+
 
     // 엑셀 파일 로드 및 데이터 읽기 로직 (여기서 엑셀 파일을 읽습니다)
     void readDataFromExcel(QXlsx::Document &doc);
