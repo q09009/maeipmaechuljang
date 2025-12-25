@@ -15,6 +15,7 @@ class DataHandler : public QObject
 public:
     explicit DataHandler(QObject *parent = nullptr);
 
+
     // 엑셀에서 읽은 업체명 리스트를 반환
     Q_INVOKABLE QVariantList getDataName() const;
 
@@ -80,7 +81,7 @@ public:
     // Q_INVOKABLE bool writeExcelData(const QString &filePath);
 
     // QML 호출 가능 함수: C++에서 엑셀 파일을 로드하도록 지시
-    Q_INVOKABLE bool loadExcelData(const QString &filePath);
+    Q_INVOKABLE bool loadExcelData();
 
     //월별통계 구하는 함수, 저거를 바탕으로 엑셀에다가 sumproduct 써서 입력
     Q_INVOKABLE void getMonthTotal(const QVariant &year, const QVariant &gb, const QVariant &supplier, const QVariant &product);
@@ -99,6 +100,14 @@ public:
 
 
 private:
+
+    //record하고 data를 가리키는 포인터
+    QXlsx::Document *m_recordDoc = nullptr;
+    QXlsx::Document *m_dataDoc = nullptr;
+    //파일을 한번만 로드하도록 보장하는 내부함수
+    void ensureRecordLoaded();
+    void ensureDataLoaded();
+
     // C++ 내부에서 사용할 리스트 변수들
     QList<QVariant> dataName;
     QList<QVariant> dataProduct;
@@ -138,7 +147,7 @@ private:
 
 
     // 엑셀 파일 로드 및 데이터 읽기 로직 (여기서 엑셀 파일을 읽습니다)
-    void readDataFromExcel(QXlsx::Document &doc);
+    void readDataFromExcel();
 
 
 

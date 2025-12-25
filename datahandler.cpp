@@ -12,17 +12,40 @@ DataHandler::DataHandler(QObject *parent) : QObject(parent)
     // 엑셀 로드는 QML에서 loadExcelData()가 호출될 때 진행됩니다.
 }
 
+void DataHandler::ensureRecordLoaded() {
+    if(!m_recordDoc) {
+        //record파일이 로드 안됐으면 로드
+        m_recordDoc = new QXlsx::Document("data/record.xlsx");
+        if(!m_recordDoc->load()) {
+            //record파일이 없으면 새로 생성
+            makeExcels();
+        }
+    }
+}
+
+void DataHandler::ensureDataLoaded() {
+    if(!m_dataDoc) {
+        //data파일이 로드 안됐으면 로드
+        m_dataDoc = new QXlsx::Document("data/data.xlsx");
+        if(!m_dataDoc->load()) {
+            //data 파일이 없으면 새로 생성
+            makeExcels();
+        }
+    }
+}
+
 // ----------------------------------------------------
 // 엑셀 데이터 로드 함수 (QML이 호출)
 // ----------------------------------------------------
-bool DataHandler::loadExcelData(const QString &filePath)
+bool DataHandler::loadExcelData()
 {
     // C++ 표준 문자열 변환 없이 바로 QString으로 경로 지정
-    QXlsx::Document doc(filePath);
+    //QXlsx::Document doc(filePath);
+    ensureDataLoaded();
 
     // 1. 파일 로드 확인
-    if (!doc.load()) {
-        qWarning() << "경로에서 엑셀 파일 로드 실패:" << filePath;
+    if (!m_dataDoc->load()) {
+        qWarning() << "경로에서 엑셀 파일 로드 실패";
         return false;
     }
 
@@ -33,7 +56,7 @@ bool DataHandler::loadExcelData(const QString &filePath)
     dataPPrice.clear();
 
     // 2. 실제 데이터 읽기 함수 호출
-    readDataFromExcel(doc);
+    readDataFromExcel();
 
     qDebug() << "엑셀 데이터 로드 성공. 업체 수:" << dataName.size();
     return true;
@@ -81,8 +104,10 @@ int maxProductRow;
 // ----------------------------------------------------
 // 내부 데이터 읽기 로직 (업체명, 상품명)
 // ----------------------------------------------------
-void DataHandler::readDataFromExcel(QXlsx::Document &doc)
+void DataHandler::readDataFromExcel()
 {
+    ensureDataLoaded();
+
     int row = 2; // 데이터가 2행부터 시작한다고 가정
     int col_name = 1; // 1열: 업체명
     int col_product = 2; // 2열: 상품명
@@ -90,10 +115,10 @@ void DataHandler::readDataFromExcel(QXlsx::Document &doc)
     int col_price = 4; // 4열: 단가
 
     while (true) {
-        QVariant supplierVar = doc.read(row, col_name);
-        QVariant productVar = doc.read(row, col_product);
-        QVariant sizeVar = doc.read(row, col_size);
-        QVariant priceVar = doc.read(row, col_price);
+        QVariant supplierVar = m_dataDoc->read(row, col_name);
+        QVariant productVar = m_dataDoc->read(row, col_product);
+        QVariant sizeVar = m_dataDoc->read(row, col_size);
+        QVariant priceVar = m_dataDoc->read(row, col_price);
 
         // A열(업체명)이 빈 셀이면 반복문 종료
         if (!productVar.isValid()) {
@@ -115,18 +140,19 @@ void DataHandler::readDataFromExcel(QXlsx::Document &doc)
 // ----------------------------------------------------
 void DataHandler::writeDataProduct(const QVariant &product, const QVariant &size, const QVariant &price) {
 
-    QXlsx::Document doc("data/data.xlsx");
+    //QXlsx::Document doc("data/data.xlsx");
+    ensureDataLoaded();
 
     int col_product = 2;
     int col_size = 3;
     int col_price = 4;
 
-    doc.write(maxProductRow, col_product, product);
-    doc.write(maxProductRow, col_size, size);
-    doc.write(maxProductRow, col_price, price);
+    m_dataDoc->write(maxProductRow, col_product, product);
+    m_dataDoc->write(maxProductRow, col_size, size);
+    m_dataDoc->write(maxProductRow, col_price, price);
     maxProductRow++;
 
-    doc.save();
+    m_dataDoc->save();
 
     //readDataFromExcel(doc);
 }
@@ -136,11 +162,12 @@ void DataHandler::writeDataProduct(const QVariant &product, const QVariant &size
 // ----------------------------------------------------
 void DataHandler::writeDataName(const QVariant &name, const QVariant &count) {
 
-    QXlsx::Document doc("data/data.xlsx");
+    //QXlsx::Document doc("data/data.xlsx");
+    ensureDataLoaded();
 
-    doc.write(count.toInt() + 2, 1, name);
+    m_dataDoc->write(count.toInt() + 2, 1, name);
 
-    doc.save();
+    m_dataDoc->save();
 }
 
 // ----------------------------------------------------
@@ -148,11 +175,12 @@ void DataHandler::writeDataName(const QVariant &name, const QVariant &count) {
 // ----------------------------------------------------
 void DataHandler::writeExcelRecord(bool mae, const QVariant &date, const QVariant &supplier, const QVariant &product, const QVariant &size, const QVariant &price, const QVariant &quantity) {
 
-    QXlsx::Document doc("data/record.xlsx");
+    //QXlsx::Document doc("data/record.xlsx");
+    ensureRecordLoaded();
 
     int row = 2;
     while(true) {
-        QVariant value = doc.read(row,1);
+        QVariant value = m_recordDoc->read(row,1);
 
         if(!value.isValid()) {
             break;
@@ -166,20 +194,20 @@ void DataHandler::writeExcelRecord(bool mae, const QVariant &date, const QVarian
     // 2. QDate 부분만 추출합니다.
     QDate dateOnly = dateTime.date();
 
-    doc.write(row, 1, mae ? "매입":"매출");
-    doc.write(row, 2, dateOnly);
-    doc.write(row, 3, supplier);
-    doc.write(row, 4, product);
-    doc.write(row, 5, size);
-    doc.write(row, 6, price.toInt());
-    doc.write(row, 7, quantity.toInt());
-    doc.write(row, 8, gongga);
-    doc.write(row, 9, tax);
-    doc.write(row, 10, gongga.toInt() + tax.toInt());
-    doc.write(row, 13, gongga.toInt() + tax.toInt());
+    m_recordDoc->write(row, 1, mae ? "매입":"매출");
+    m_recordDoc->write(row, 2, dateOnly);
+    m_recordDoc->write(row, 3, supplier);
+    m_recordDoc->write(row, 4, product);
+    m_recordDoc->write(row, 5, size);
+    m_recordDoc->write(row, 6, price.toInt());
+    m_recordDoc->write(row, 7, quantity.toInt());
+    m_recordDoc->write(row, 8, gongga);
+    m_recordDoc->write(row, 9, tax);
+    m_recordDoc->write(row, 10, gongga.toInt() + tax.toInt());
+    m_recordDoc->write(row, 13, gongga.toInt() + tax.toInt());
 
 
-    doc.save();
+    m_recordDoc->save();
 }
 // ----------------------------------------------------
 // 레코드 입금일, 입금액 읽어오기 로직 (record.xlsx)
@@ -192,18 +220,37 @@ void DataHandler::readRecordIpGeum(const QVariant &row) {
     ipDate3.clear();
     ipAmount3.clear();
 
-    QXlsx::Document doc("data/record.xlsx");
+    //QXlsx::Document doc("data/record.xlsx");
+    ensureRecordLoaded();
     int rownum = row.toInt();
 
-    QDate date1 = doc.read(rownum, 11).toDate();
+    QDate date1 = m_recordDoc->read(rownum, 11).toDate();
     ipDate1 = date1.toString("yyyy-MM-dd");
-    ipAmount1 = doc.read(rownum, 12);
-    QDate date2 = doc.read(rownum, 14).toDate();
+    if(m_recordDoc->read(rownum, 12).isNull()) {
+        ipAmount1 = 0;
+    }
+    else {
+        ipAmount1 = m_recordDoc->read(rownum, 12);
+    }
+    QDate date2 = m_recordDoc->read(rownum, 14).toDate();
     ipDate2 = date2.toString("yyyy-MM-dd");
-    ipAmount2 = doc.read(rownum, 15);
-    QDate date3 = doc.read(rownum, 16).toDate();
+    //ipAmount2 = doc.read(rownum, 15);
+    if(m_recordDoc->read(rownum, 15).isNull()) {
+        ipAmount2 = 0;
+    }
+    else {
+        ipAmount2 = m_recordDoc->read(rownum, 15);
+    }
+    QDate date3 = m_recordDoc->read(rownum, 16).toDate();
     ipDate3 = date3.toString("yyyy-MM-dd");
-    ipAmount3 = doc.read(rownum, 17);
+    //ipAmount3 = doc.read(rownum, 17);
+    if(m_recordDoc->read(rownum, 17).isNull()) {
+        ipAmount3 = 0;
+    }
+    else {
+        ipAmount3 = m_recordDoc->read(rownum, 17);
+    }
+    qDebug() << "레코드 입금일, 입금액 불러옴";
 
 }
 
@@ -212,14 +259,15 @@ void DataHandler::readRecordIpGeum(const QVariant &row) {
 // ----------------------------------------------------
 void DataHandler::writeRecordIp(const QVariant &date1, const QVariant &amount1, const QVariant &date2, const QVariant &amount2, const QVariant &date3, const QVariant &amount3, const QVariant &row) {
 
-    QXlsx::Document doc("data/record.xlsx");
+    //QXlsx::Document doc("data/record.xlsx");
+    ensureRecordLoaded();
 
     int rownum = row.toInt();
     int IpAmount1 = amount1.toInt();
     int IpAmount2 = amount2.toInt();
     int IpAmount3 = amount3.toInt();
     //Misu는 미수금액
-    int Misu = doc.read(rownum, 10).toInt() - IpAmount1 - IpAmount2 - IpAmount3;
+    int Misu = m_recordDoc->read(rownum, 10).toInt() - IpAmount1 - IpAmount2 - IpAmount3;
 
     QString dateString1 = date1.toString();
 
@@ -235,17 +283,17 @@ void DataHandler::writeRecordIp(const QVariant &date1, const QVariant &amount1, 
 
 
 
-    doc.write(rownum, 11, myDate1);
-    doc.write(rownum, 12, IpAmount1);
-    doc.write(rownum, 13, Misu);
-    doc.write(rownum, 14, myDate2);
-    doc.write(rownum, 15, IpAmount2);
-    doc.write(rownum, 16, myDate3);
-    doc.write(rownum, 17, IpAmount3);
+    m_recordDoc->write(rownum, 11, myDate1);
+    m_recordDoc->write(rownum, 12, IpAmount1);
+    m_recordDoc->write(rownum, 13, Misu);
+    m_recordDoc->write(rownum, 14, myDate2);
+    m_recordDoc->write(rownum, 15, IpAmount2);
+    m_recordDoc->write(rownum, 16, myDate3);
+    m_recordDoc->write(rownum, 17, IpAmount3);
 
 
 
-    doc.save();
+    m_recordDoc->save();
 }
 
 // ----------------------------------------------------
@@ -270,7 +318,8 @@ bool DataHandler::readRecordRange(const QVariant &startDate, const QVariant &end
     readResultRows.clear();
 
     //이제부터 읽어주자
-    QXlsx::Document doc("data/record.xlsx");
+    //QXlsx::Document doc("data/record.xlsx");
+    ensureRecordLoaded();
     int row = 2; // 데이터가 2행부터 시작한다고 가정
     std::vector<int> resultRows;
     int col_gooboon = 1; // 1열: 구분
@@ -280,11 +329,11 @@ bool DataHandler::readRecordRange(const QVariant &startDate, const QVariant &end
 
     while (true) {
         //조건과 비교해볼 자료들
-        QVariant gooboonVar = doc.read(row, col_gooboon);
-        QVariant dateVar = doc.read(row, col_date);
+        QVariant gooboonVar = m_recordDoc->read(row, col_gooboon);
+        QVariant dateVar = m_recordDoc->read(row, col_date);
         QDate dateQ = dateVar.toDate();
-        QVariant supplierVar = doc.read(row, col_supplier);
-        QVariant productVar = doc.read(row, col_product);
+        QVariant supplierVar = m_recordDoc->read(row, col_supplier);
+        QVariant productVar = m_recordDoc->read(row, col_product);
 
         // A열(구분)이 빈 셀이면 반복문 종료
         if (!gooboonVar.isValid()) {
@@ -353,28 +402,28 @@ bool DataHandler::readRecordRange(const QVariant &startDate, const QVariant &end
 
     for(int i=0;i<resultRows.size();i++) {
         //resultRows가 조건에 맞는 row니까 거기에 맞는 값들 다 담기
-        QVariant resultGooboonVar = doc.read(resultRows[i], col_gooboon);
-        QVariant resultDateVar = doc.read(resultRows[i], col_date);
+        QVariant resultGooboonVar = m_recordDoc->read(resultRows[i], col_gooboon);
+        QVariant resultDateVar = m_recordDoc->read(resultRows[i], col_date);
         QDate resultDateQ = resultDateVar.toDate();
-        QVariant resultSupVar = doc.read(resultRows[i], col_supplier);
-        QVariant resultProVar = doc.read(resultRows[i], col_product);
-        QVariant resultSizeVar = doc.read(resultRows[i], 5);
-        QVariant resultPriceVar = doc.read(resultRows[i], 6);
-        QVariant resultQuanVar = doc.read(resultRows[i], 7);
-        QVariant resultGonggaVar = doc.read(resultRows[i], 8);
-        QVariant resultBugaVar = doc.read(resultRows[i], 9);
-        QVariant resultHapVar = doc.read(resultRows[i], 10);
-        QVariant resultIpdate1Var = doc.read(resultRows[i], 11);
+        QVariant resultSupVar = m_recordDoc->read(resultRows[i], col_supplier);
+        QVariant resultProVar = m_recordDoc->read(resultRows[i], col_product);
+        QVariant resultSizeVar = m_recordDoc->read(resultRows[i], 5);
+        QVariant resultPriceVar = m_recordDoc->read(resultRows[i], 6);
+        QVariant resultQuanVar = m_recordDoc->read(resultRows[i], 7);
+        QVariant resultGonggaVar = m_recordDoc->read(resultRows[i], 8);
+        QVariant resultBugaVar = m_recordDoc->read(resultRows[i], 9);
+        QVariant resultHapVar = m_recordDoc->read(resultRows[i], 10);
+        QVariant resultIpdate1Var = m_recordDoc->read(resultRows[i], 11);
         QDate resultIpdate1Q = resultIpdate1Var.toDate();
-        QVariant resultIpdate2Var = doc.read(resultRows[i], 14);
+        QVariant resultIpdate2Var = m_recordDoc->read(resultRows[i], 14);
         QDate resultIpdate2Q = resultIpdate2Var.toDate();
-        QVariant resultIpdate3Var = doc.read(resultRows[i], 16);
+        QVariant resultIpdate3Var = m_recordDoc->read(resultRows[i], 16);
         QDate resultIpdate3Q = resultIpdate3Var.toDate();
         QDate latest = std::max({resultIpdate1Q, resultIpdate2Q, resultIpdate3Q});
-        QVariant resultIpAmount1Var = doc.read(resultRows[i], 12);
-        QVariant resultIpAmount2Var = doc.read(resultRows[i], 15);
-        QVariant resultIpAmount3Var = doc.read(resultRows[i], 17);
-        QVariant resultMisuVar = doc.read(resultRows[i], 13);
+        QVariant resultIpAmount1Var = m_recordDoc->read(resultRows[i], 12);
+        QVariant resultIpAmount2Var = m_recordDoc->read(resultRows[i], 15);
+        QVariant resultIpAmount3Var = m_recordDoc->read(resultRows[i], 17);
+        QVariant resultMisuVar = m_recordDoc->read(resultRows[i], 13);
         resultGooboon.append(resultGooboonVar.toString());
         resultDate.append(resultDateQ.toString("yyyy-MM-dd"));
         resultSupplier.append(resultSupVar.toString());
@@ -398,7 +447,8 @@ bool DataHandler::readRecordRange(const QVariant &startDate, const QVariant &end
 }
 
 void DataHandler::getMonthTotal(const QVariant &year, const QVariant &gb, const QVariant &supplier, const QVariant &product) {
-    QXlsx::Document doc("data/record.xlsx");
+    //QXlsx::Document doc("data/record.xlsx");
+    ensureRecordLoaded();
 
     //기존 데이터들 초기화
     mtAmount.clear();
@@ -423,11 +473,11 @@ void DataHandler::getMonthTotal(const QVariant &year, const QVariant &gb, const 
 
     while (true) {
         //조건과 비교해볼 자료들
-        QVariant gooboonVar = doc.read(row, col_gooboon);
-        QVariant dateVar = doc.read(row, col_date);
+        QVariant gooboonVar = m_recordDoc->read(row, col_gooboon);
+        QVariant dateVar = m_recordDoc->read(row, col_date);
         QDate dateQ = dateVar.toDate();
-        QVariant supplierVar = doc.read(row, col_supplier);
-        QVariant productVar = doc.read(row, col_product);
+        QVariant supplierVar = m_recordDoc->read(row, col_supplier);
+        QVariant productVar = m_recordDoc->read(row, col_product);
 
         // A열(구분)이 빈 셀이면 반복문 종료
         if (!gooboonVar.isValid()) {
@@ -501,15 +551,15 @@ void DataHandler::getMonthTotal(const QVariant &year, const QVariant &gb, const 
 
     for(int i=0;i<mtRows.size();i++) {
         //resultRows가 조건에 맞는 row니까 거기에 맞는 값들 다 담기
-        QVariant resultDateVar = doc.read(mtRows[i], col_date);
+        QVariant resultDateVar = m_recordDoc->read(mtRows[i], col_date);
         QDate resultDateQ = resultDateVar.toDate();
         int month = resultDateQ.month() - 1;
         //qDebug() << month;
-        QVariant resultQuanVar = doc.read(mtRows[i], 7);
-        QVariant resultGonggaVar = doc.read(mtRows[i], 8);
-        QVariant resultBugaVar = doc.read(mtRows[i], 9);
-        QVariant resultHapVar = doc.read(mtRows[i], 10);
-        QVariant resultMisuVar = doc.read(mtRows[i], 13);
+        QVariant resultQuanVar = m_recordDoc->read(mtRows[i], 7);
+        QVariant resultGonggaVar = m_recordDoc->read(mtRows[i], 8);
+        QVariant resultBugaVar = m_recordDoc->read(mtRows[i], 9);
+        QVariant resultHapVar = m_recordDoc->read(mtRows[i], 10);
+        QVariant resultMisuVar = m_recordDoc->read(mtRows[i], 13);
 
         mtAmount[month] += resultQuanVar.toInt();
         mtGongga[month] += resultGonggaVar.toInt();

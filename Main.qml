@@ -11,7 +11,7 @@ ApplicationWindow {
     title: "매입매출장"
 
     // [Logic & Data] - 변경 없음
-    property string dataFilePath: "data/data.xlsx"
+    //property string dataFilePath: "data/data.xlsx"
     property list<string> supplierList
     property list<string> productList
     property list<string> supplierSearchList
@@ -38,7 +38,7 @@ ApplicationWindow {
 
     Component.onCompleted: {
         //console.log(excelData.test());
-        if (excelData.loadExcelData(dataFilePath)) {
+        if (excelData.loadExcelData()) {
             var suppliers = excelData.getDataName();
             var products = excelData.getDataProduct();
             var sizes = excelData.getDataSize();
@@ -596,6 +596,7 @@ ApplicationWindow {
                                 mainWindow.ipgeumDate2 = excelData.getipDate2();
                                 mainWindow.ipgeumAmount3 = excelData.getipAmount3();
                                 mainWindow.ipgeumDate3 = excelData.getipDate3();
+                                console.log("ye")
                             }
                         }
 
