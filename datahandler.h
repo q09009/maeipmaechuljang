@@ -2,6 +2,7 @@
 #include <QObject>
 #include <QString>
 #include <QVariantList>
+#include <QtConcurrent>
 
 #include "xlsxdocument.h"
 #include "xlsxcell.h"
@@ -45,8 +46,8 @@ public:
 
     Q_INVOKABLE QList<int> getReadResultRows() const;
 
-    Q_INVOKABLE void makeExcels();
-
+    Q_INVOKABLE void makeDataExcel();
+    Q_INVOKABLE void makeRecordExcel();
     // QML에서 record 엑셀로
     // Q_INVOKABLE QVariantList sendRecord() const;
 
@@ -85,7 +86,18 @@ public:
 
     //월별통계 구하는 함수, 저거를 바탕으로 엑셀에다가 sumproduct 써서 입력
     Q_INVOKABLE void getMonthTotal(const QVariant &year, const QVariant &gb, const QVariant &supplier, const QVariant &product);
-    //Q_INVOKABLE void readMonthTotal();
+
+    //선택된 레코드 삭제하는 함수
+    Q_INVOKABLE void deleteRecord(const QVariant &row);
+
+    //이미 있는 data 수정하는함수들, 업체명이나 상품 정보들
+    Q_INVOKABLE void editDataSupplier(const QVariant &name, const QVariant &row);
+    Q_INVOKABLE void editDataProduct(const QVariant &product, const QVariant &size, const QVariant &price, const QVariant &row);
+
+    Q_INVOKABLE int getDataSupRow(const QVariant &name);
+    Q_INVOKABLE int getDataProRow(const QVariant &name);
+    Q_INVOKABLE QVariant getDataSizeEdit();
+    Q_INVOKABLE QVariant getDataPriceEdit();
 
     int getRecordRows();
     //월별통계 반환하는 함수, 입력된거를 읽어오는놈들
@@ -96,11 +108,18 @@ public:
     Q_INVOKABLE QVariantList getMTMisu() const;
 
     Q_INVOKABLE QVariant test();
+    Q_INVOKABLE void loadExcelInBackground();
+
+signals:
+    //처음 로딩할때 좀 오래걸리니까 로딩화면 추가해줘야지
+    void loadingStarted();
+    void loadingFinished();
 
 
 
 private:
 
+    std::atomic<bool> m_isLoading{false}; // 여러 스레드에서 접근하므로 atomic이 안전합니다.
     //record하고 data를 가리키는 포인터
     QXlsx::Document *m_recordDoc = nullptr;
     QXlsx::Document *m_dataDoc = nullptr;
@@ -148,6 +167,8 @@ private:
 
     // 엑셀 파일 로드 및 데이터 읽기 로직 (여기서 엑셀 파일을 읽습니다)
     void readDataFromExcel();
+
+    int dataEditRow;
 
 
 

@@ -38,6 +38,7 @@ ApplicationWindow {
 
     Component.onCompleted: {
         //console.log(excelData.test());
+        excelData.loadExcelInBackground();
         if (excelData.loadExcelData()) {
             var suppliers = excelData.getDataName();
             var products = excelData.getDataProduct();
@@ -73,14 +74,124 @@ ApplicationWindow {
             title: qsTr("추가")
             MenuItem { text: qsTr("업체 추가"); onTriggered: supplierAddPopup.open() }
             MenuItem { text: qsTr("상품 추가"); onTriggered: productAddPopup.open() }
+            MenuItem { text: qsTr("업체 변경"); onTriggered: supplierEditPopup.open() }
+            MenuItem { text: qsTr("상품 변경"); onTriggered: productEditPopup.open() }
         }
         Menu {
             title: qsTr("통계")
             MenuItem { text: qsTr("월별통계"); onTriggered: monthStat.show() }
         }
+        Menu {
+            title: qsTr("도움말")
+            MenuItem { text: qsTr("정보"); onTriggered: infoPopup.open() }
+        }
     }
 
     // [Popups] - 변경 없음
+
+    Popup {
+            id: loadingPopup
+            anchors.centerIn: parent
+            width: 150; height: 75
+            modal: true // 팝업 뒤쪽 클릭 안 되게 막음
+            focus: true
+            closePolicy: Popup.NoAutoClose // 작업 끝날 때까지 안 닫히게 설정
+
+            ColumnLayout {
+                anchors.centerIn: parent
+                spacing: 20
+
+                Text {
+                    text: "데이터를 불러오는 중..."
+                    //anchors.horizontalCenter: parent
+                    Layout.alignment: Qt.AlignHCenter
+                    //Layout.alignment: Qt.AlignVCenter
+                }
+                //밑에거들 두개다 로딩하는거의 cpu 사용량이 너무 세서 로딩 애니메이션이 안나옴....
+                // ProgressBar {
+                //     indeterminate: true
+                //     Layout.alignment: Qt.AlignHCenter
+
+                // }
+
+                // BusyIndicator {
+                //     //anchors.horizontalCenter: parent
+                //     running: true
+                //     Layout.alignment: Qt.AlignHCenter
+                // }
+            }
+        }
+
+        // 2. C++ 시그널과 연결 (핵심!)
+        Connections {
+            target: excelData // main.cpp에서 등록한 객체 이름
+
+            // 로딩 시작 시그널을 받으면 팝업 열기
+            function onLoadingStarted() {
+                loadingPopup.open()
+            }
+
+            // 로딩 완료 시그널을 받으면 팝업 닫기
+            function onLoadingFinished() {
+                loadingPopup.close()
+                // 추가로 완료 알림 팝업을 띄우고 싶다면 여기에 작성
+                bgLoadingFinished.open()
+            }
+        }
+
+        // 완료 알림 팝업 (선택 사항)
+
+
+    Popup {
+        id: supplierEditPopup
+        property var row
+        width: 300; height: 100
+        anchors.centerIn: parent
+        modal: true
+        closePolicy: Popup.CloseOnPressOutside
+        contentItem: RowLayout {
+            ColumnLayout {
+                ComboBox {
+                    id: supplierEditComboBox
+                    Layout.preferredWidth: 175 // Layout 크기 제어
+                    Layout.preferredHeight: 25
+                    model: supplierList
+                    currentIndex: 0
+                    onActivated: (index) => {
+                                     console.log("선택된 옵션:", supplierEditComboBox.currentText);
+                                     supplierEditTextfield.text = supplierEditComboBox.currentText;
+                                     supplierEditPopup.row = excelData.getDataSupRow(supplierEditComboBox.currentText);
+                                     console.log(excelData.getDataSupRow(supplierEditComboBox.currentText));
+                                 }
+
+                    popup: Popup {
+                        y: supplierEditComboBox.height - 1
+                        width: supplierEditComboBox.width
+                        height: Math.min(contentItem.implicitHeight, 600)
+                        padding: 1
+                        contentItem: ListView {
+                            clip: true
+                            implicitHeight: contentHeight
+                            model: supplierEditComboBox.popup.visible ? supplierEditComboBox.delegateModel : null
+                            currentIndex: supplierEditComboBox.highlightedIndex
+                            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AlwaysOn }
+                        }
+                    }
+                }
+                TextField { id: supplierEditTextfield; placeholderText: qsTr("수정할 업체명 입력"); Layout.preferredWidth: 175 }
+            }
+            Button {
+                text: qsTr("수정")
+                Layout.preferredWidth: 50
+                onClicked: {
+                    excelData.editDataSupplier(supplierEditTextfield.text, supplierEditPopup.row);
+                    console.log("수정 성공");
+                }
+            }
+            Button { text: qsTr("닫기"); onClicked: supplierEditPopup.close() }
+        }
+    }
+
     Popup {
         id: supplierAddPopup
         width: 300; height: 100
@@ -94,10 +205,73 @@ ApplicationWindow {
                 onClicked: {
                     excelData.writeDataName(supplierAddTextfield.text, mainWindow.supplierList.length);
                     mainWindow.supplierList.push(supplierAddTextfield.text);
+                    mainWindow.supplierSearchList.push(supplierAddTextfield.text);
                     console.log("추가 성공");
                 }
             }
             Button { text: qsTr("X"); onClicked: supplierAddPopup.close() }
+        }
+    }
+
+
+    Popup {
+        id: productEditPopup
+        property var row
+        property var size
+        property var price
+        width: 450; height: 100
+        anchors.centerIn: parent
+        modal: true
+        closePolicy: Popup.CloseOnPressOutside
+        contentItem: RowLayout {
+            ColumnLayout {
+                ComboBox {
+                    id: productEditComboBox
+                    Layout.preferredWidth: 300
+                    Layout.preferredHeight: 25
+                    model: productList
+                    currentIndex: 0
+                    onActivated: (index) => {
+                                     console.log("선택된 옵션번호:", productEditComboBox.currentIndex);
+                                     productEditName.text = productEditComboBox.currentText;
+                                     productEditPopup.row = excelData.getDataProRow(productEditComboBox.currentText);
+                                     console.log("type of ~", typeof excelData.getDataProRow(productEditComboBox.currentText));
+                                     console.log("row = ", excelData.getDataProRow(productEditComboBox.currentText));
+                                     console.log("규격 = ", excelData.getDataSizeEdit());
+                                     console.log("단가 = ", excelData.getDataPriceEdit());
+                                     productEditPopup.size = excelData.getDataSizeEdit()
+                                     productEditPopup.price = excelData.getDataPriceEdit()
+                                     productEditSize.text = productEditPopup.size;
+                                     productEditPrice.text = productEditPopup.price;
+                                 }
+
+                    popup: Popup {
+                        y: productEditComboBox.height - 1
+                        width: productEditComboBox.width
+                        height: Math.min(contentItem.implicitHeight, 600)
+                        padding: 1
+                        contentItem: ListView {
+                            clip: true
+                            implicitHeight: contentHeight
+                            model: productEditComboBox.popup.visible ? productEditComboBox.delegateModel : null
+                            currentIndex: productEditComboBox.highlightedIndex
+                            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AlwaysOn }
+                        }
+                    }
+                }
+                RowLayout {
+                    TextField { id: productEditName; placeholderText: qsTr("상품명"); Layout.fillWidth: true }
+                    TextField { id: productEditSize; placeholderText: qsTr("규격"); Layout.preferredWidth: 80 }
+                    TextField { id: productEditPrice; placeholderText: qsTr("단가"); Layout.preferredWidth: 100 }
+                }
+            }
+            Button {
+                text: qsTr("수정")
+                onClicked:  {
+                    excelData.editDataProduct(productEditName.text, productEditSize.text, productEditPrice.text, productEditPopup.row);
+                }
+            }
+            Button { text: qsTr("닫기"); onClicked: productEditPopup.close() }
         }
     }
 
@@ -116,6 +290,7 @@ ApplicationWindow {
                 onClicked:  {
                     excelData.writeDataProduct(productAddName.text, productAddSize.text, productAddPrice.text);
                     mainWindow.productList.push(productAddName.text);
+                    mainWindow.productSearchList.push(productAddName.text);
                     mainWindow.sizeList.push(productAddSize.text);
                     mainWindow.priceList.push(productAddPrice.text);
                     console.log("추가 성공");
@@ -129,28 +304,107 @@ ApplicationWindow {
     }
 
     Popup {
-        id: recordAddedPopup
+        id: infoPopup
         width: 200; height: 100
         anchors.centerIn: parent
         modal: true
         closePolicy: Popup.CloseOnPressOutside
         contentItem: ColumnLayout {
-            Text { text: qsTr("추가 성공"); font.bold: true; Layout.alignment: Qt.AlignHCenter }
-            Button { text: qsTr("닫기"); Layout.alignment: Qt.AlignHCenter; onClicked: recordAddedPopup.close() }
+            Text {
+                text: qsTr("매입매출장 프로그램")
+                Layout.alignment: Qt.AlignLeft
+            }
+            Text {
+                text: qsTr("버전 1.3")
+                Layout.alignment: Qt.AlignLeft
+            }
+
+            Button { text: qsTr("닫기"); Layout.alignment: Qt.AlignRight; onClicked: infoPopup.close() }
         }
     }
 
     Popup {
-        id: searchFailed
+        id: deleteAskPopup
+        property var row
         width: 200; height: 100
         anchors.centerIn: parent
         modal: true
         closePolicy: Popup.CloseOnPressOutside
         contentItem: ColumnLayout {
-            Text { text: qsTr("조건에 맞는 값 없음"); Layout.alignment: Qt.AlignHCenter }
-            Button { text: qsTr("확인"); Layout.alignment: Qt.AlignHCenter; onClicked: searchFailed.close() }
+            Text {
+                text: qsTr("정말로 삭제하시겠습니까?")
+                Layout.alignment: Qt.AlignCenter
+            }
+            RowLayout {
+                Layout.alignment: Qt.AlignHCenter
+                Button {
+                    text: qsTr("삭제")
+                    onClicked: {
+                        excelData.deleteRecord(deleteAskPopup.row);
+                        deleteFinished.open();
+                        deleteAskPopup.close();
+                    }
+                }
+                Button {
+                    text: qsTr("취소")
+                    onClicked: deleteAskPopup.close()
+                }
+            }
         }
     }
+
+    component ResultPopup : Popup {
+        id: rPopup
+        property alias text: label.text
+        property alias textColor: label.color
+        width: 200; height: 100
+        anchors.centerIn: parent
+        modal: true
+        closePolicy: Popup.CloseOnPressOutside
+        contentItem: ColumnLayout {
+            Text { id: label; font.bold: true; Layout.alignment: Qt.AlignHCenter }
+            Button { text: qsTr("닫기"); Layout.alignment: Qt.AlignHCenter; onClicked: rPopup.close() }
+        }
+    }
+
+    ResultPopup {
+        id: noSelected
+        text: "항목을 선택해주세요"
+    }
+
+    ResultPopup {
+        id: deleteFinished
+        text: "삭제 성공"
+    }
+
+    ResultPopup {
+        id: bgLoadingFinished
+        text: "백그라운드 로딩 성공"
+    }
+
+    ResultPopup {
+        id: recordAddedPopup
+        text: "추가 성공"
+    }
+
+    ResultPopup {
+        id: searchFailed
+        text: "조건에 맞는 값 없음"
+    }
+
+
+
+    // Popup {
+    //     id: loadingPopup
+    //     width: 200; height: 100
+    //     anchors.centerIn: parent
+    //     modal: true
+    //     closePolicy: Popup.CloseOnPressOutside
+    //     contentItem: ColumnLayout {
+    //         Text { text: qsTr("조건에 맞는 값 없음"); Layout.alignment: Qt.AlignHCenter }
+    //         Button { text: qsTr("확인"); Layout.alignment: Qt.AlignHCenter; onClicked: searchFailed.close() }
+    //     }
+    // }
 
     Popup {
         id: ipgeumPopup
@@ -441,7 +695,12 @@ ApplicationWindow {
                     }
                 }
                 Button { id: addIpgeumRecord; text: qsTr("💰 입금처리");
-                    onClicked: searchResultList.searchClicked ? ipgeumPopup.open() : console.log("no")
+                    onClicked: searchResultList.searchClicked ? ipgeumPopup.open() : noSelected.open()
+                }
+                Button {
+                    id: deleteRecordButton
+                    text: qsTr("❌ 항목 삭제")
+                    onClicked: searchResultList.searchClicked ? deleteAskPopup.open() : noSelected.open()
                 }
             }
         }
@@ -581,6 +840,7 @@ ApplicationWindow {
                             anchors.fill: parent
                             onClicked: {
                                 searchResultList.selectedRow = modelData.rows
+                                deleteAskPopup.row = modelData.rows
                                 searchResultList.searchClicked = true
                                 console.log("clicked:", modelData.rows)
                                 mainWindow.ipgeumAmount1 = 0;

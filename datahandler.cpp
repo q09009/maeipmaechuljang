@@ -5,6 +5,7 @@
 #include <QDir>
 #include <vector>
 #include <algorithm>
+#include <QtConcurrent>
 
 DataHandler::DataHandler(QObject *parent) : QObject(parent)
 {
@@ -18,7 +19,8 @@ void DataHandler::ensureRecordLoaded() {
         m_recordDoc = new QXlsx::Document("data/record.xlsx");
         if(!m_recordDoc->load()) {
             //record파일이 없으면 새로 생성
-            makeExcels();
+            makeRecordExcel();
+            m_recordDoc = new QXlsx::Document("data/record.xlsx");
         }
     }
 }
@@ -29,9 +31,42 @@ void DataHandler::ensureDataLoaded() {
         m_dataDoc = new QXlsx::Document("data/data.xlsx");
         if(!m_dataDoc->load()) {
             //data 파일이 없으면 새로 생성
-            makeExcels();
+            makeDataExcel();
+            m_dataDoc = new QXlsx::Document("data/data.xlsx");
         }
     }
+}
+
+void DataHandler::loadExcelInBackground() {
+    if (m_isLoading) return;
+
+    m_isLoading = true;
+    emit loadingStarted();
+
+    // 람다 함수를 사용하여 백그라운드에서 실행
+    QtConcurrent::run([this]() {
+        qDebug() << "백그라운드에서 엑셀 로딩을 시작합니다...";
+
+        // 실제 오래 걸리는 작업들
+        if (!m_dataDoc) {
+            m_dataDoc = new QXlsx::Document("data/data.xlsx");
+            m_dataDoc->load();
+        }
+
+
+        if (!m_recordDoc) {
+            m_recordDoc = new QXlsx::Document("data/record.xlsx");
+            m_recordDoc->load();
+        }
+
+        m_isLoading = false;
+        qDebug() << "백그라운드 로딩 완료!";
+
+        // 작업이 끝나면 신호를 보냅니다.
+        emit loadingFinished();
+    });
+
+
 }
 
 // ----------------------------------------------------
@@ -42,6 +77,7 @@ bool DataHandler::loadExcelData()
     // C++ 표준 문자열 변환 없이 바로 QString으로 경로 지정
     //QXlsx::Document doc(filePath);
     ensureDataLoaded();
+    //ensureRecordLoaded();
 
     // 1. 파일 로드 확인
     if (!m_dataDoc->load()) {
@@ -62,14 +98,29 @@ bool DataHandler::loadExcelData()
     return true;
 }
 
-void DataHandler::makeExcels() {
+void DataHandler::makeDataExcel() {
     QDir dir;
     QXlsx::Document data;
-    QXlsx::Document record;
     data.write("A1", "거래처명");
     data.write("B1", "상품명");
     data.write("C1", "규격");
     data.write("D1", "단가");
+
+    if (!dir.exists("data")) { // 폴더가 이미 있는지 확인
+        if (dir.mkdir("data")) {
+            qDebug() << "폴더 생성 성공!";
+        } else {
+            qDebug() << "폴더 생성 실패";
+        }
+    }
+
+    data.saveAs("data/data.xlsx");
+}
+
+void DataHandler::makeRecordExcel() {
+    QDir dir;
+
+    QXlsx::Document record;
     record.write("A1", "구분");
     record.write("B1", "거래일자");
     record.write("C1", "거래처명");
@@ -94,8 +145,6 @@ void DataHandler::makeExcels() {
             qDebug() << "폴더 생성 실패";
         }
     }
-
-    data.saveAs("data/data.xlsx");
     record.saveAs("data/record.xlsx");
 }
 
@@ -598,6 +647,137 @@ QVariant DataHandler::test() {
     auto cell = doc.cellAt(1, 1);
     QVariant val = cell->value();
     return val;
+}
+
+
+void DataHandler::editDataSupplier(const QVariant &name, const QVariant &row) {
+    ensureDataLoaded();
+
+    int rownum = row.toInt();
+    m_dataDoc->write(rownum, 1, name);
+
+    m_dataDoc->save();
+}
+
+void DataHandler::editDataProduct(const QVariant &product, const QVariant &size, const QVariant &price, const QVariant &row) {
+    ensureDataLoaded();
+
+    int rownum = row.toInt();
+    m_dataDoc->write(rownum, 2, product);
+    m_dataDoc->write(rownum, 3, size);
+    m_dataDoc->write(rownum, 4, price);
+
+    m_dataDoc->save();
+}
+
+int DataHandler::getDataSupRow(const QVariant &name) {
+    ensureDataLoaded();
+
+    int row = 2;
+    while (true) {
+        QVariant supplierVar = m_dataDoc->read(row, 1);
+
+        // A열(업체명)이 빈 셀이면 반복문 종료
+        if (supplierVar == name) {
+            break;
+        }
+
+        row++;
+    }
+    return row;
+}
+
+int DataHandler::getDataProRow(const QVariant &name) {
+    ensureDataLoaded();
+
+    int row = 2;
+    while (true) {
+        QVariant productVar = m_dataDoc->read(row, 2);
+        // A열(업체명)이 빈 셀이면 반복문 종료
+        if (productVar == name) {
+            break;
+        }
+        //qDebug() << productVar;
+        row++;
+    }
+    qDebug() << row;
+    dataEditRow = row;
+    return row;
+}
+
+QVariant DataHandler::getDataSizeEdit() {
+    ensureDataLoaded();
+    QVariant sizeVar = m_dataDoc->read(dataEditRow, 3);
+    return sizeVar;
+}
+
+QVariant DataHandler::getDataPriceEdit() {
+    ensureDataLoaded();
+    QVariant priceVar = m_dataDoc->read(dataEditRow, 4);
+    return priceVar;
+}
+
+void DataHandler::deleteRecord(const QVariant &row)
+{
+    ensureRecordLoaded();
+
+    int rownum = row.toInt(); // 데이터가 2행부터 시작한다고 가정
+
+
+    //여기서부터는 삭제한 줄 밑에를 보면서 밑에칸에서 한칸씩 위로 올려주는거임
+    while (true) {
+        QVariant gbVar = m_recordDoc->read(rownum+1, 1);
+        QVariant dateVar = m_recordDoc->read(rownum+1, 2);
+        QVariant supVar = m_recordDoc->read(rownum+1, 3);
+        QVariant proVar = m_recordDoc->read(rownum+1, 4);
+        QVariant sizeVar = m_recordDoc->read(rownum+1, 5);
+        QVariant priceVar = m_recordDoc->read(rownum+1, 6);
+        QVariant amountVar = m_recordDoc->read(rownum+1, 7);
+        QVariant ggVar = m_recordDoc->read(rownum+1, 8);
+        QVariant bgVar = m_recordDoc->read(rownum+1, 9);
+        QVariant hgVar = m_recordDoc->read(rownum+1, 10);
+        QVariant ipdate1Var = m_recordDoc->read(rownum+1, 11);
+        QVariant ipam1Var = m_recordDoc->read(rownum+1, 12);
+        QVariant misuVar = m_recordDoc->read(rownum+1, 13);
+        QVariant ipdate2Var = m_recordDoc->read(rownum+1, 14);
+        QVariant ipam2Var = m_recordDoc->read(rownum+1, 15);
+        QVariant ipdate3Var = m_recordDoc->read(rownum+1, 16);
+        QVariant ipam3Var = m_recordDoc->read(rownum+1, 17);
+
+        // 밑에 구분칸이 빈 셀이면 반복문 종료
+        if (!gbVar.isValid()) {
+            break;
+        }
+
+        //빈칸이 아니라면 이제 위로 올려주자 ㅋㅋ
+        m_recordDoc->write(rownum, 1, gbVar);
+        m_recordDoc->write(rownum, 2, dateVar);
+        m_recordDoc->write(rownum, 3, supVar);
+        m_recordDoc->write(rownum, 4, proVar);
+        m_recordDoc->write(rownum, 5, sizeVar);
+        m_recordDoc->write(rownum, 6, priceVar);
+        m_recordDoc->write(rownum, 7, amountVar);
+        m_recordDoc->write(rownum, 8, ggVar);
+        m_recordDoc->write(rownum, 9, bgVar);
+        m_recordDoc->write(rownum, 10, hgVar);
+        m_recordDoc->write(rownum, 11, ipdate1Var);
+        m_recordDoc->write(rownum, 12, ipam1Var);
+        m_recordDoc->write(rownum, 13, misuVar);
+        m_recordDoc->write(rownum, 14, ipdate2Var);
+        m_recordDoc->write(rownum, 15, ipam2Var);
+        m_recordDoc->write(rownum, 16, ipdate3Var);
+        m_recordDoc->write(rownum, 17, ipam3Var);
+
+
+        //다옮겼으면 이제 밑에로 한칸
+        rownum++;
+    }
+    //이제 밑에꺼 삭제
+    for(int i=0;i<17;i++) {
+        m_recordDoc->write(rownum, i+1, "");
+    }
+    m_recordDoc->save();
+
 }
 // ----------------------------------------------------
 // QML 데이터 반환 함수
