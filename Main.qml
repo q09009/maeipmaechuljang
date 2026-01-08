@@ -25,6 +25,7 @@ ApplicationWindow {
     property int hapgyeSum: 0
     property int ipamountSum: 0
     property int misuSum: 0
+    property int mijiSum: 0
     property int gaesoo: 0
     property list<int> readRows
     property var combinedModel: []
@@ -35,6 +36,8 @@ ApplicationWindow {
     property var ipgeumDate1
     property var ipgeumDate2
     property var ipgeumDate3
+
+    property bool searchedMae
 
     Component.onCompleted: {
         //console.log(excelData.test());
@@ -64,7 +67,7 @@ ApplicationWindow {
             mainWindow.supplierSearchList.push("전체");
             mainWindow.productSearchList.push("전체");
         } else {
-            excelData.makeExcels();
+            //excelData.makeExcels();
         }
     }
 
@@ -649,6 +652,7 @@ ApplicationWindow {
                     text: qsTr("🔍 검색")
                     highlighted: true
                     onClicked: {
+                        mainWindow.searchedMae = searchMaeip.mae
                         if(excelData.readRecordRange(searchCalendarFirst.currentDate, searchCalendarSecond.currentDate, searchMaeip.mae, searchSupplierComboBox.currentText, searchProductComboBox.currentText)) {
                             mainWindow.readRows = []; mainWindow.combinedModel = [];
                             mainWindow.amountSum = 0; mainWindow.gonggaSum = 0; mainWindow.bugaSum = 0;
@@ -667,6 +671,7 @@ ApplicationWindow {
                             var recordIpdate = excelData.getResultIpdate();
                             var recordIpAmount = excelData.getResultIpAmount();
                             var recordMisu = excelData.getResultMisu();
+                            var recordMiji = excelData.getResultMiji();
                             var recordRows = excelData.getReadResultRows();
 
                             mainWindow.gaesoo = recordGB.length
@@ -679,14 +684,27 @@ ApplicationWindow {
                                 mainWindow.hapgyeSum += recordHapgye[i];
                                 mainWindow.ipamountSum += recordIpAmount[i];
                                 mainWindow.misuSum += recordMisu[i];
+                                mainWindow.mijiSum += recordMiji[i];
 
-                                mainWindow.combinedModel.push({
-                                    gb: recordGB[i], date: recordDate[i], supplier: recordSupplier[i],
-                                    product: recordProduct[i], size: recordSize[i], price: recordPrice[i],
-                                    quantity: recordQuantity[i], gongga: recordGongga[i], buga: recordBuga[i],
-                                    hapgye: recordHapgye[i], ipdate: recordIpdate[i], ipamount: recordIpAmount[i],
-                                    misu: recordMisu[i], rows: recordRows[i]
-                                })
+                                if(searchMaeip.mae) {
+                                    mainWindow.combinedModel.push({
+                                        gb: recordGB[i], date: recordDate[i], supplier: recordSupplier[i],
+                                        product: recordProduct[i], size: recordSize[i], price: recordPrice[i],
+                                        quantity: recordQuantity[i], gongga: recordGongga[i], buga: recordBuga[i],
+                                        hapgye: recordHapgye[i], ipdate: recordIpdate[i], ipamount: recordIpAmount[i],
+                                        misu: recordMiji[i], rows: recordRows[i]
+                                    })
+                                }
+                                else {
+                                    mainWindow.combinedModel.push({
+                                        gb: recordGB[i], date: recordDate[i], supplier: recordSupplier[i],
+                                        product: recordProduct[i], size: recordSize[i], price: recordPrice[i],
+                                        quantity: recordQuantity[i], gongga: recordGongga[i], buga: recordBuga[i],
+                                        hapgye: recordHapgye[i], ipdate: recordIpdate[i], ipamount: recordIpAmount[i],
+                                        misu: recordMisu[i], rows: recordRows[i]
+                                    })
+                                }
+
                             }
                             mainWindow.combinedModel = mainWindow.combinedModel
                         } else {
@@ -738,7 +756,7 @@ ApplicationWindow {
                 SummaryItem { title: "총 합계금액"; value: mainWindow.hapgyeSum.toLocaleString(Qt.locale(), 'f', 0); valColor: "blue" }
                 Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: "#ccc" }
                 SummaryItem { title: "총 입금액"; value: mainWindow.ipamountSum.toLocaleString(Qt.locale(), 'f', 0) }
-                SummaryItem { title: `총 ${mainWindow.misuSum>=0 ? "미" : "선"}수금`; value: mainWindow.misuSum>=0 ? mainWindow.misuSum.toLocaleString(Qt.locale(), 'f', 0) : Math.abs(mainWindow.misuSum).toLocaleString(Qt.locale(), 'f', 0); valColor: mainWindow.misuSum<=0 ? "blue" : "red" }
+                SummaryItem { title: `총 미${searchedMae.mae ? "지급" : "수금"}액`; value: searchedMae.mae ? mainWindow.mijiSum.toLocaleString(Qt.locale(), 'f', 0) : mainWindow.misuSum.toLocaleString(Qt.locale(), 'f', 0); valColor: "blue" }
                 Item { Layout.fillWidth: true }
             }
         }
@@ -804,7 +822,7 @@ ApplicationWindow {
                         Rectangle { width: 1; height: 20; color: "#ddd" }
                         HeaderText { text: "누적입금액"; Layout.preferredWidth: 70 }
                         Rectangle { width: 1; height: 20; color: "#ddd" }
-                        HeaderText { text: "미수금"; Layout.preferredWidth: 70 }
+                        HeaderText { text: `미${searchedMae.mae ? "지급" : "수금"}액`; Layout.preferredWidth: 70 }
 
                         // 🌟 스크롤바 가림 방지용 빈 공간 (Spacer) 추가
                         Item { Layout.preferredWidth: 20 }

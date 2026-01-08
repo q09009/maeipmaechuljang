@@ -42,6 +42,7 @@ public:
     Q_INVOKABLE QVariantList getResultHapgye() const;
     Q_INVOKABLE QVariantList getResultIpdate() const;
     Q_INVOKABLE QVariantList getResultIpAmount() const;
+    Q_INVOKABLE QVariantList getResultMiji() const;
     Q_INVOKABLE QVariantList getResultMisu() const;
 
     Q_INVOKABLE QList<int> getReadResultRows() const;
@@ -106,6 +107,7 @@ public:
     Q_INVOKABLE QVariantList getMTBuga() const;
     Q_INVOKABLE QVariantList getMTHapgye() const;
     Q_INVOKABLE QVariantList getMTMisu() const;
+    Q_INVOKABLE QVariantList getMTMiji() const;
 
     Q_INVOKABLE QVariant test();
     Q_INVOKABLE void loadExcelInBackground();
@@ -146,6 +148,7 @@ private:
     QList<QVariant> resultHapgye;
     QList<QVariant> resultIpdate;
     QList<QVariant> resultIpAmount;
+    QList<QVariant> resultMiji;
     QList<QVariant> resultMisu;
 
     QList<int> readResultRows;
@@ -162,6 +165,7 @@ private:
     QList<int> mtBuga;
     QList<int> mtHapgye;
     QList<int> mtMisu;
+    QList<int> mtMiji;
 
 
 

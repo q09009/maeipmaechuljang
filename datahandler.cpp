@@ -133,11 +133,12 @@ void DataHandler::makeRecordExcel() {
     record.write("J1", "합계금액");
     record.write("K1", "입금일1");
     record.write("L1", "입금액1");
-    record.write("M1", "미수금액");
-    record.write("N1", "입금일2");
-    record.write("O1", "입금액2");
-    record.write("P1", "입금일3");
-    record.write("Q1", "입금액3");
+    record.write("M1", "입금일2");
+    record.write("N1", "입금액2");
+    record.write("O1", "입금일3");
+    record.write("P1", "입금액3");
+    record.write("Q1", "미지급액");
+    record.write("R1", "미수금액");
     if (!dir.exists("data")) { // 폴더가 이미 있는지 확인
         if (dir.mkdir("data")) {
             qDebug() << "폴더 생성 성공!";
@@ -253,7 +254,8 @@ void DataHandler::writeExcelRecord(bool mae, const QVariant &date, const QVarian
     m_recordDoc->write(row, 8, gongga);
     m_recordDoc->write(row, 9, tax);
     m_recordDoc->write(row, 10, gongga.toInt() + tax.toInt());
-    m_recordDoc->write(row, 13, gongga.toInt() + tax.toInt());
+    //매입이면 미지급액칸에, 매출이면 미수금액칸에
+    m_recordDoc->write(row, mae ? 17 : 18, gongga.toInt() + tax.toInt());
 
 
     m_recordDoc->save();
@@ -281,23 +283,23 @@ void DataHandler::readRecordIpGeum(const QVariant &row) {
     else {
         ipAmount1 = m_recordDoc->read(rownum, 12);
     }
-    QDate date2 = m_recordDoc->read(rownum, 14).toDate();
+    QDate date2 = m_recordDoc->read(rownum, 13).toDate();
     ipDate2 = date2.toString("yyyy-MM-dd");
     //ipAmount2 = doc.read(rownum, 15);
-    if(m_recordDoc->read(rownum, 15).isNull()) {
+    if(m_recordDoc->read(rownum, 14).isNull()) {
         ipAmount2 = 0;
     }
     else {
-        ipAmount2 = m_recordDoc->read(rownum, 15);
+        ipAmount2 = m_recordDoc->read(rownum, 14);
     }
-    QDate date3 = m_recordDoc->read(rownum, 16).toDate();
+    QDate date3 = m_recordDoc->read(rownum, 15).toDate();
     ipDate3 = date3.toString("yyyy-MM-dd");
     //ipAmount3 = doc.read(rownum, 17);
-    if(m_recordDoc->read(rownum, 17).isNull()) {
+    if(m_recordDoc->read(rownum, 16).isNull()) {
         ipAmount3 = 0;
     }
     else {
-        ipAmount3 = m_recordDoc->read(rownum, 17);
+        ipAmount3 = m_recordDoc->read(rownum, 16);
     }
     qDebug() << "레코드 입금일, 입금액 불러옴";
 
@@ -334,13 +336,19 @@ void DataHandler::writeRecordIp(const QVariant &date1, const QVariant &amount1, 
 
     m_recordDoc->write(rownum, 11, myDate1);
     m_recordDoc->write(rownum, 12, IpAmount1);
-    m_recordDoc->write(rownum, 13, Misu);
-    m_recordDoc->write(rownum, 14, myDate2);
-    m_recordDoc->write(rownum, 15, IpAmount2);
-    m_recordDoc->write(rownum, 16, myDate3);
-    m_recordDoc->write(rownum, 17, IpAmount3);
+    //m_recordDoc->write(rownum, 13, Misu);
+    m_recordDoc->write(rownum, 13, myDate2);
+    m_recordDoc->write(rownum, 14, IpAmount2);
+    m_recordDoc->write(rownum, 15, myDate3);
+    m_recordDoc->write(rownum, 16, IpAmount3);
 
-
+    QVariant mae = m_recordDoc->read(rownum, 1);
+    if(mae == "매입") {
+        m_recordDoc->write(rownum, 17, Misu);
+    }
+    else {
+        m_recordDoc->write(rownum, 18, Misu);
+    }
 
     m_recordDoc->save();
 }
@@ -363,6 +371,7 @@ bool DataHandler::readRecordRange(const QVariant &startDate, const QVariant &end
     resultHapgye.clear();
     resultIpdate.clear();
     resultIpAmount.clear();
+    resultMiji.clear();
     resultMisu.clear();
     readResultRows.clear();
 
@@ -464,15 +473,16 @@ bool DataHandler::readRecordRange(const QVariant &startDate, const QVariant &end
         QVariant resultHapVar = m_recordDoc->read(resultRows[i], 10);
         QVariant resultIpdate1Var = m_recordDoc->read(resultRows[i], 11);
         QDate resultIpdate1Q = resultIpdate1Var.toDate();
-        QVariant resultIpdate2Var = m_recordDoc->read(resultRows[i], 14);
+        QVariant resultIpdate2Var = m_recordDoc->read(resultRows[i], 13);
         QDate resultIpdate2Q = resultIpdate2Var.toDate();
-        QVariant resultIpdate3Var = m_recordDoc->read(resultRows[i], 16);
+        QVariant resultIpdate3Var = m_recordDoc->read(resultRows[i], 15);
         QDate resultIpdate3Q = resultIpdate3Var.toDate();
         QDate latest = std::max({resultIpdate1Q, resultIpdate2Q, resultIpdate3Q});
         QVariant resultIpAmount1Var = m_recordDoc->read(resultRows[i], 12);
-        QVariant resultIpAmount2Var = m_recordDoc->read(resultRows[i], 15);
-        QVariant resultIpAmount3Var = m_recordDoc->read(resultRows[i], 17);
-        QVariant resultMisuVar = m_recordDoc->read(resultRows[i], 13);
+        QVariant resultIpAmount2Var = m_recordDoc->read(resultRows[i], 14);
+        QVariant resultIpAmount3Var = m_recordDoc->read(resultRows[i], 16);
+        QVariant resultMijiVar = m_recordDoc->read(resultRows[i], 17);  //미지급액
+        QVariant resultMisuVar = m_recordDoc->read(resultRows[i], 18);  //미수금액
         resultGooboon.append(resultGooboonVar.toString());
         resultDate.append(resultDateQ.toString("yyyy-MM-dd"));
         resultSupplier.append(resultSupVar.toString());
@@ -485,6 +495,7 @@ bool DataHandler::readRecordRange(const QVariant &startDate, const QVariant &end
         resultHapgye.append(resultHapVar.toInt());
         resultIpdate.append(latest.toString("yyyy-MM-dd"));
         resultIpAmount.append(resultIpAmount1Var.toInt()+resultIpAmount2Var.toInt()+resultIpAmount3Var.toInt());
+        resultMiji.append(resultMijiVar.toInt());
         resultMisu.append(resultMisuVar.toInt());
         //조건에 맞는 Row들을 따로 저장해둠, 나중에 입금일, 입금액, 미수금액 처리하기 위함
         readResultRows.append(resultRows[i]);
@@ -505,12 +516,14 @@ void DataHandler::getMonthTotal(const QVariant &year, const QVariant &gb, const 
     mtBuga.clear();
     mtHapgye.clear();
     mtMisu.clear();
+    mtMiji.clear();
     for(int i=0;i<12;i++) {
         mtAmount.append(0);
         mtGongga.append(0);
         mtBuga.append(0);
         mtHapgye.append(0);
         mtMisu.append(0);
+        mtMiji.append(0);
     }
 
     int row = 2; // 데이터가 2행부터 시작한다고 가정
@@ -608,13 +621,15 @@ void DataHandler::getMonthTotal(const QVariant &year, const QVariant &gb, const 
         QVariant resultGonggaVar = m_recordDoc->read(mtRows[i], 8);
         QVariant resultBugaVar = m_recordDoc->read(mtRows[i], 9);
         QVariant resultHapVar = m_recordDoc->read(mtRows[i], 10);
-        QVariant resultMisuVar = m_recordDoc->read(mtRows[i], 13);
+        QVariant resultMijiVar = m_recordDoc->read(mtRows[i], 17);
+        QVariant resultMisuVar = m_recordDoc->read(mtRows[i], 18);
 
         mtAmount[month] += resultQuanVar.toInt();
         mtGongga[month] += resultGonggaVar.toInt();
         mtBuga[month] += resultBugaVar.toInt();
         mtHapgye[month] += resultHapVar.toInt();
         mtMisu[month] += resultMisuVar.toInt();
+        mtMiji[month] += resultMijiVar.toInt();
 
     }
 }
@@ -642,10 +657,11 @@ int DataHandler::getRecordRows()
 
 QVariant DataHandler::test() {
     QXlsx::Document doc("data/record.xlsx");
-    doc.write(1, 1, "=5+4");
-    doc.save();
-    auto cell = doc.cellAt(1, 1);
-    QVariant val = cell->value();
+
+    //doc.write(1, 1, "=5+4");
+    //doc.save();
+    //auto cell = doc.cellAt(1, 1);
+    QVariant val = doc.read(3, 1);
     return val;
 }
 
@@ -738,11 +754,12 @@ void DataHandler::deleteRecord(const QVariant &row)
         QVariant hgVar = m_recordDoc->read(rownum+1, 10);
         QVariant ipdate1Var = m_recordDoc->read(rownum+1, 11);
         QVariant ipam1Var = m_recordDoc->read(rownum+1, 12);
-        QVariant misuVar = m_recordDoc->read(rownum+1, 13);
-        QVariant ipdate2Var = m_recordDoc->read(rownum+1, 14);
-        QVariant ipam2Var = m_recordDoc->read(rownum+1, 15);
-        QVariant ipdate3Var = m_recordDoc->read(rownum+1, 16);
-        QVariant ipam3Var = m_recordDoc->read(rownum+1, 17);
+        QVariant mijiVar = m_recordDoc->read(rownum+1, 17);
+        QVariant misuVar = m_recordDoc->read(rownum+1, 18);
+        QVariant ipdate2Var = m_recordDoc->read(rownum+1, 13);
+        QVariant ipam2Var = m_recordDoc->read(rownum+1, 14);
+        QVariant ipdate3Var = m_recordDoc->read(rownum+1, 15);
+        QVariant ipam3Var = m_recordDoc->read(rownum+1, 16);
 
         // 밑에 구분칸이 빈 셀이면 반복문 종료
         if (!gbVar.isValid()) {
@@ -762,18 +779,19 @@ void DataHandler::deleteRecord(const QVariant &row)
         m_recordDoc->write(rownum, 10, hgVar);
         m_recordDoc->write(rownum, 11, ipdate1Var);
         m_recordDoc->write(rownum, 12, ipam1Var);
-        m_recordDoc->write(rownum, 13, misuVar);
-        m_recordDoc->write(rownum, 14, ipdate2Var);
-        m_recordDoc->write(rownum, 15, ipam2Var);
-        m_recordDoc->write(rownum, 16, ipdate3Var);
-        m_recordDoc->write(rownum, 17, ipam3Var);
+        m_recordDoc->write(rownum, 13, ipdate2Var);
+        m_recordDoc->write(rownum, 14, ipam2Var);
+        m_recordDoc->write(rownum, 15, ipdate3Var);
+        m_recordDoc->write(rownum, 16, ipam3Var);
+        m_recordDoc->write(rownum, 17, mijiVar);
+        m_recordDoc->write(rownum, 18, misuVar);
 
 
         //다옮겼으면 이제 밑에로 한칸
         rownum++;
     }
     //이제 밑에꺼 삭제
-    for(int i=0;i<17;i++) {
+    for(int i=0;i<18;i++) {
         m_recordDoc->write(rownum, i+1, "");
     }
     m_recordDoc->save();
@@ -951,6 +969,16 @@ QVariantList DataHandler::getResultMisu() const
     return list;
 }
 
+QVariantList DataHandler::getResultMiji() const
+{
+    QVariantList list;
+    // QList<QVariant>의 데이터를 QVariantList로 변환하여 QML로 전달
+    for (const QVariant &name : resultMiji) {
+        list.append(QVariant::fromValue(name));
+    }
+    return list;
+}
+
 QList<int> DataHandler::getReadResultRows() const
 {
     return readResultRows;
@@ -1029,6 +1057,16 @@ QVariantList DataHandler::getMTMisu() const
     QVariantList list;
     // QList<QVariant>의 데이터를 QVariantList로 변환하여 QML로 전달
     for (const QVariant &name : mtMisu) {
+        list.append(QVariant::fromValue(name));
+    }
+    return list;
+}
+
+QVariantList DataHandler::getMTMiji() const
+{
+    QVariantList list;
+    // QList<QVariant>의 데이터를 QVariantList로 변환하여 QML로 전달
+    for (const QVariant &name : mtMiji) {
         list.append(QVariant::fromValue(name));
     }
     return list;

@@ -26,6 +26,8 @@ Window {
         property var mtBungi: [];
         property var mtBangi: [];
 
+        property bool mtGB
+
         // 엑셀 셀처럼 보이는 공통 컴포넌트
         component ExcelCell: Rectangle {
             Layout.fillWidth: true
@@ -169,6 +171,13 @@ Window {
                         Layout.preferredHeight: 25
                         // (기존 클릭 로직 그대로 유지)
                         onClicked: {
+                            if(mtGBComboBox.currentText === "매입") {
+                                mtroot.mtGB = true;
+                            }
+                            else {
+                                mtroot.mtGB = false;
+                            }
+
                             excelData.getMonthTotal(mtYearComboBox.currentText, mtGBComboBox.currentText, mtSupplierComboBox.currentText, mtProductComboBox.currentText);
 
                             mtroot.mtModel = [];
@@ -182,7 +191,14 @@ Window {
                             var tempg = excelData.getMTGongga();
                             var tempb = excelData.getMTBuga();
                             var temph = excelData.getMTHapgye();
-                            var tempm = excelData.getMTMisu();
+                            if(mtGBComboBox.currentText === "매입") {
+                                var tempm = excelData.getMTMiji();
+                            }
+                            else {
+                                var tempm = excelData.getMTMisu();
+                            }
+                            //var tempm = excelData.getMTMisu();
+
 
                             var tempbungia=0; var tempbungig=0; var tempbungib=0; var tempbungih=0; var tempbungim=0;
                             var tempbangia=0; var tempbangig=0; var tempbangib=0; var tempbangih=0; var tempbangim=0;
@@ -238,7 +254,7 @@ Window {
                 HeaderCell { id: mtgg; text: "공급가액"; Layout.preferredWidth: 130 }
                 HeaderCell { id: mtbg; text: "부가세액"; Layout.preferredWidth: 100 }
                 HeaderCell { id: mthg; text: "합계금액"; Layout.preferredWidth: 130 }
-                HeaderCell { id: mtms; text: "미수금액"; Layout.preferredWidth: 130 }
+                HeaderCell { id: mtms; text: `미${mtroot.mtGB ? "지급" : "수금"}액`; Layout.preferredWidth: 130 }
             }
 
             // 1. 월별 리스트
