@@ -66,9 +66,15 @@ ApplicationWindow {
             }
             mainWindow.supplierSearchList.push("전체");
             mainWindow.productSearchList.push("전체");
+            excelData.startOptimization();
         } else {
             //excelData.makeExcels();
         }
+    }
+
+    Component.onDestruction: {
+        console.log("종료중...");
+        excelData.endOptimization();
     }
 
     // [Menu] - 변경 없음

@@ -36,6 +36,19 @@ void DataHandler::ensureDataLoaded() {
         }
     }
 }
+void DataHandler::startOptimization() {
+    ensureRecordLoaded();
+
+    m_recordDoc->write(2, 1, "test");
+    m_recordDoc->save();
+}
+
+void DataHandler::endOptimization() {
+    ensureRecordLoaded();
+
+    m_recordDoc->write(2, 1, "");
+    m_recordDoc->save();
+}
 
 void DataHandler::loadExcelInBackground() {
     if (m_isLoading) return;

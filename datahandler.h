@@ -109,6 +109,11 @@ public:
     Q_INVOKABLE QVariantList getMTMisu() const;
     Q_INVOKABLE QVariantList getMTMiji() const;
 
+    //킬때는 2번째줄을 채워주고 끌때는 2번째줄을 지워줌
+    //이렇게 해보니까 로딩속도가 개빨라짐 ㅋㅋㅋ
+    Q_INVOKABLE void startOptimization();
+    Q_INVOKABLE void endOptimization();
+
     Q_INVOKABLE QVariant test();
     Q_INVOKABLE void loadExcelInBackground();
 
@@ -171,6 +176,8 @@ private:
 
     // 엑셀 파일 로드 및 데이터 읽기 로직 (여기서 엑셀 파일을 읽습니다)
     void readDataFromExcel();
+
+
 
     int dataEditRow;
 
