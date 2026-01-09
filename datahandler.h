@@ -6,6 +6,8 @@
 
 #include "xlsxdocument.h"
 #include "xlsxcell.h"
+#include "xlsxformat.h"
+//#include "xlsxstyles_p.h"
 
 #ifndef DATAHANDLER_H
 #define DATAHANDLER_H
@@ -109,10 +111,9 @@ public:
     Q_INVOKABLE QVariantList getMTMisu() const;
     Q_INVOKABLE QVariantList getMTMiji() const;
 
-    //킬때는 2번째줄을 채워주고 끌때는 2번째줄을 지워줌
-    //이렇게 해보니까 로딩속도가 개빨라짐 ㅋㅋㅋ
+    //로드 속도가 느릴때는 글씨체, 글씨크기가 다른게 있거나 빈 행이 있으면 속도가 확 느려짐, 그거 해결용
     Q_INVOKABLE void startOptimization();
-    Q_INVOKABLE void endOptimization();
+    Q_INVOKABLE void deleteZeros();
 
     Q_INVOKABLE QVariant test();
     Q_INVOKABLE void loadExcelInBackground();
@@ -121,6 +122,8 @@ signals:
     //처음 로딩할때 좀 오래걸리니까 로딩화면 추가해줘야지
     void loadingStarted();
     void loadingFinished();
+    void optStarted();
+    void optFinished();
 
 
 

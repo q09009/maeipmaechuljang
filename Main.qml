@@ -37,7 +37,7 @@ ApplicationWindow {
     property var ipgeumDate2
     property var ipgeumDate3
 
-    property bool searchedMae
+    property bool searchedMae: true
 
     Component.onCompleted: {
         //console.log(excelData.test());
@@ -66,7 +66,6 @@ ApplicationWindow {
             }
             mainWindow.supplierSearchList.push("전체");
             mainWindow.productSearchList.push("전체");
-            excelData.startOptimization();
         } else {
             //excelData.makeExcels();
         }
@@ -74,7 +73,7 @@ ApplicationWindow {
 
     Component.onDestruction: {
         console.log("종료중...");
-        excelData.endOptimization();
+        excelData.deleteZeros();
     }
 
     // [Menu] - 변경 없음
@@ -92,6 +91,7 @@ ApplicationWindow {
         }
         Menu {
             title: qsTr("도움말")
+            //MenuItem { text: qsTr("최적화"); onTriggered: optimizationPopup.open() }
             MenuItem { text: qsTr("정보"); onTriggered: infoPopup.open() }
         }
     }
@@ -195,6 +195,8 @@ ApplicationWindow {
                 onClicked: {
                     excelData.editDataSupplier(supplierEditTextfield.text, supplierEditPopup.row);
                     console.log("수정 성공");
+                    supplierEditPopup.close();
+                    editFinished.open();
                 }
             }
             Button { text: qsTr("닫기"); onClicked: supplierEditPopup.close() }
@@ -216,6 +218,8 @@ ApplicationWindow {
                     mainWindow.supplierList.push(supplierAddTextfield.text);
                     mainWindow.supplierSearchList.push(supplierAddTextfield.text);
                     console.log("추가 성공");
+                    supplierAddPopup.close();
+                    recordAddedPopup.open();
                 }
             }
             Button { text: qsTr("X"); onClicked: supplierAddPopup.close() }
@@ -278,6 +282,8 @@ ApplicationWindow {
                 text: qsTr("수정")
                 onClicked:  {
                     excelData.editDataProduct(productEditName.text, productEditSize.text, productEditPrice.text, productEditPopup.row);
+                    productEditPopup.close();
+                    editFinished.open();
                 }
             }
             Button { text: qsTr("닫기"); onClicked: productEditPopup.close() }
@@ -303,6 +309,8 @@ ApplicationWindow {
                     mainWindow.sizeList.push(productAddSize.text);
                     mainWindow.priceList.push(productAddPrice.text);
                     console.log("추가 성공");
+                    productAddPopup.close();
+                    recordAddedPopup.open();
                 }
             }
             Button { text: qsTr("X"); onClicked: productAddPopup.close() }
@@ -329,6 +337,36 @@ ApplicationWindow {
             }
 
             Button { text: qsTr("닫기"); Layout.alignment: Qt.AlignRight; onClicked: infoPopup.close() }
+        }
+    }
+
+    Popup {
+        id: optimizationPopup
+        property var row
+        width: 200; height: 100
+        anchors.centerIn: parent
+        modal: true
+        closePolicy: Popup.CloseOnPressOutside
+        contentItem: ColumnLayout {
+            Text {
+                text: qsTr("record를 최적화 하시겠습니까?")
+                Layout.alignment: Qt.AlignCenter
+            }
+            RowLayout {
+                Layout.alignment: Qt.AlignHCenter
+                Button {
+                    text: qsTr("최적화")
+                    onClicked: {
+                        excelData.startOptimization();
+                        optimizationFinished.open();
+                        optimizationPopup.close();
+                    }
+                }
+                Button {
+                    text: qsTr("취소")
+                    onClicked: optimizationPopup.close()
+                }
+            }
         }
     }
 
@@ -374,6 +412,16 @@ ApplicationWindow {
             Text { id: label; font.bold: true; Layout.alignment: Qt.AlignHCenter }
             Button { text: qsTr("닫기"); Layout.alignment: Qt.AlignHCenter; onClicked: rPopup.close() }
         }
+    }
+
+    ResultPopup {
+        id: optimizationFinished
+        text: "최적화 완료"
+    }
+
+    ResultPopup {
+        id: editFinished
+        text: "수정 성공"
     }
 
     ResultPopup {
@@ -555,18 +603,34 @@ ApplicationWindow {
                 }
 
                 TextField { id: textGongGa; readOnly: true; Layout.fillWidth: true; horizontalAlignment: Text.AlignRight; placeholderText: "공급가액";
-                    text: { var p=parseInt(textPrice.text), a=parseInt(textAmount.text); return (isNaN(p)||isNaN(a))?"0":p*a } }
+                    text: {
+                        var p=parseInt(textPrice.text), a=parseInt(textAmount.text);
+                        if (isNaN(p) || isNaN(a)) return "0";
+
+                        var result = p * a;
+                        return result.toLocaleString(Qt.locale("ko_KR"), "f", 0).replace(/,/g, "");
+                    }
+                }
                 TextField { id: textBuGa; readOnly: true; Layout.fillWidth: true; horizontalAlignment: Text.AlignRight; placeholderText: "부가세";
                     text: {
                         var g=parseInt(textGongGa.text);
                         if(!taxornot.ta) {
                             return "0";
                         }
+                        if(isNaN(g)) return "0";
+                        var result = g*0.1;
 
-                        return isNaN(g)?"0":g*0.1
+                        return result.toLocaleString(Qt.locale("ko_KR"), "f", 0).replace(/,/g, "");
                     } }
                 TextField { id: textHapGye; readOnly: true; Layout.fillWidth: true; horizontalAlignment: Text.AlignRight; placeholderText: "합계"; font.bold: true;
-                    text: { var g=parseInt(textGongGa.text), b=parseInt(textBuGa.text); return isNaN(g)?"0":g+b } }
+                    text: {
+                        var g=parseInt(textGongGa.text), b=parseInt(textBuGa.text);
+
+                        if (isNaN(g)) return "0";
+                        var result = g+b;
+                        return result.toLocaleString(Qt.locale("ko_KR"), "f", 0).replace(/,/g, "");
+                    }
+                }
 
                 Button {
                     id: addRecord
@@ -663,6 +727,7 @@ ApplicationWindow {
                             mainWindow.readRows = []; mainWindow.combinedModel = [];
                             mainWindow.amountSum = 0; mainWindow.gonggaSum = 0; mainWindow.bugaSum = 0;
                             mainWindow.hapgyeSum = 0; mainWindow.ipamountSum = 0; mainWindow.misuSum = 0;
+                            mainWindow.mijiSum = 0;
 
                             var recordGB = excelData.getResultGooboon();
                             var recordDate = excelData.getResultDate();
@@ -692,7 +757,7 @@ ApplicationWindow {
                                 mainWindow.misuSum += recordMisu[i];
                                 mainWindow.mijiSum += recordMiji[i];
 
-                                if(searchMaeip.mae) {
+                                if(mainWindow.searchedMae) {
                                     mainWindow.combinedModel.push({
                                         gb: recordGB[i], date: recordDate[i], supplier: recordSupplier[i],
                                         product: recordProduct[i], size: recordSize[i], price: recordPrice[i],
@@ -762,7 +827,7 @@ ApplicationWindow {
                 SummaryItem { title: "총 합계금액"; value: mainWindow.hapgyeSum.toLocaleString(Qt.locale(), 'f', 0); valColor: "blue" }
                 Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: "#ccc" }
                 SummaryItem { title: "총 입금액"; value: mainWindow.ipamountSum.toLocaleString(Qt.locale(), 'f', 0) }
-                SummaryItem { title: `총 미${searchedMae.mae ? "지급" : "수금"}액`; value: searchedMae.mae ? mainWindow.mijiSum.toLocaleString(Qt.locale(), 'f', 0) : mainWindow.misuSum.toLocaleString(Qt.locale(), 'f', 0); valColor: "blue" }
+                SummaryItem { title: `총 미${mainWindow.searchedMae ? "지급" : "수금"}액`; value: mainWindow.searchedMae ? mainWindow.mijiSum.toLocaleString(Qt.locale(), 'f', 0) : mainWindow.misuSum.toLocaleString(Qt.locale(), 'f', 0); valColor: "blue" }
                 Item { Layout.fillWidth: true }
             }
         }
@@ -828,7 +893,7 @@ ApplicationWindow {
                         Rectangle { width: 1; height: 20; color: "#ddd" }
                         HeaderText { text: "누적입금액"; Layout.preferredWidth: 70 }
                         Rectangle { width: 1; height: 20; color: "#ddd" }
-                        HeaderText { text: `미${searchedMae.mae ? "지급" : "수금"}액`; Layout.preferredWidth: 70 }
+                        HeaderText { text: `미${mainWindow.searchedMae ? "지급" : "수금"}액`; Layout.preferredWidth: 70 }
 
                         // 🌟 스크롤바 가림 방지용 빈 공간 (Spacer) 추가
                         Item { Layout.preferredWidth: 20 }

@@ -36,17 +36,85 @@ void DataHandler::ensureDataLoaded() {
         }
     }
 }
+
+
 void DataHandler::startOptimization() {
     ensureRecordLoaded();
 
-    m_recordDoc->write(2, 1, "test");
+    int rownum = 2;
+
+
+    QXlsx::Format defaultFormat;
+    defaultFormat.setFontSize(11);
+    defaultFormat.setFontName("맑은 고딕");
+
+    while(true) {
+        QVariant var = m_recordDoc->read(rownum, 1);
+        if(rownum > m_recordDoc->dimension().lastRow()) {
+
+            break;
+        }
+        else if(!var.isValid()) {
+            //만약 빈칸이면
+            bool notEmpty = false;
+            for(int i=1;i<=18;i++) {
+                //그 행 싹다 빈칸인지 확인하고
+                QVariant isEmpty = m_recordDoc->read(rownum, i);
+                if(isEmpty.isValid()) {
+                    notEmpty = true;
+                }
+            }
+            if(notEmpty) {
+                //다 빈칸이 아니면 구분칸에 확인만 넣어둠
+                m_recordDoc->write(rownum, 1, "확인");
+            }
+            else {
+                deleteRecord(rownum);
+            }
+        }
+        else {
+            for(int i=1;i<=18;i++) {
+                QVariant ye = m_recordDoc->read(rownum, i);
+                if(i >= 6) {
+                    if(ye.typeId() == QMetaType::QDate) {
+                        m_recordDoc->write(rownum, i, ye, defaultFormat);
+                    }
+                    else {
+                        qDebug() << ye << "before";
+                        qDebug() << ye.toDouble() << "after";
+                        m_recordDoc->write(rownum, i, ye.toDouble(), defaultFormat);
+                    }
+                }
+                m_recordDoc->write(rownum, i, ye, defaultFormat);
+            }
+        }
+        rownum++;
+    }
     m_recordDoc->save();
+    qDebug() << "최적화 완료";
 }
 
-void DataHandler::endOptimization() {
+void DataHandler::deleteZeros() {
     ensureRecordLoaded();
 
-    m_recordDoc->write(2, 1, "");
+    int row = 2;
+    while(true) {
+        QVariant check = m_recordDoc->read(row, 1);
+
+        if(!check.isValid()) {
+            break;
+        }
+
+        for(int i=11;i<=16;i++) {
+            QVariant var = m_recordDoc->read(row, i);
+            QString strVal = var.toString().trimmed();
+
+            if(strVal == "0") {
+                m_recordDoc->write(row, i, QVariant());
+            }
+        }
+        row++;
+    }
     m_recordDoc->save();
 }
 
@@ -59,6 +127,7 @@ void DataHandler::loadExcelInBackground() {
     // 람다 함수를 사용하여 백그라운드에서 실행
     QtConcurrent::run([this]() {
         qDebug() << "백그라운드에서 엑셀 로딩을 시작합니다...";
+        auto start = std::chrono::high_resolution_clock::now();
 
         // 실제 오래 걸리는 작업들
         if (!m_dataDoc) {
@@ -73,7 +142,11 @@ void DataHandler::loadExcelInBackground() {
         }
 
         m_isLoading = false;
-        qDebug() << "백그라운드 로딩 완료!";
+        auto end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> diff = end - start;
+        double seconds = diff.count();
+        qDebug() << "백그라운드 로딩 완료!" << seconds << "초 걸림";
+        qDebug() << "Last Row:" << m_recordDoc->dimension().lastRow();
 
         // 작업이 끝나면 신호를 보냅니다.
         emit loadingFinished();
@@ -262,13 +335,13 @@ void DataHandler::writeExcelRecord(bool mae, const QVariant &date, const QVarian
     m_recordDoc->write(row, 3, supplier);
     m_recordDoc->write(row, 4, product);
     m_recordDoc->write(row, 5, size);
-    m_recordDoc->write(row, 6, price.toInt());
-    m_recordDoc->write(row, 7, quantity.toInt());
+    m_recordDoc->write(row, 6, price.toDouble());       //toDouble로 해야 숫자형식으로 저장됨
+    m_recordDoc->write(row, 7, quantity.toDouble());
     m_recordDoc->write(row, 8, gongga);
     m_recordDoc->write(row, 9, tax);
-    m_recordDoc->write(row, 10, gongga.toInt() + tax.toInt());
+    m_recordDoc->write(row, 10, gongga.toDouble() + tax.toDouble());
     //매입이면 미지급액칸에, 매출이면 미수금액칸에
-    m_recordDoc->write(row, mae ? 17 : 18, gongga.toInt() + tax.toInt());
+    m_recordDoc->write(row, mae ? 17 : 18, gongga.toDouble() + tax.toDouble());
 
 
     m_recordDoc->save();
@@ -330,30 +403,49 @@ void DataHandler::writeRecordIp(const QVariant &date1, const QVariant &amount1, 
     int IpAmount1 = amount1.toInt();
     int IpAmount2 = amount2.toInt();
     int IpAmount3 = amount3.toInt();
+
+    //빈칸인지 확인, 1900-01-00입력되는거 방지용
+    if(date1 != "") {
+        QString dateString1 = date1.toString();
+
+        QDate myDate1 = QDate::fromString(dateString1, "yyyy-MM-dd");
+        m_recordDoc->write(rownum, 11, myDate1);
+        m_recordDoc->write(rownum, 12, amount1.toDouble());
+    }
+    else {
+        m_recordDoc->write(rownum, 11, QVariant());
+        m_recordDoc->write(rownum, 12, QVariant());
+    }
+
+    if(date2 != "") {
+        QString dateString2 = date2.toString();
+
+        QDate myDate2 = QDate::fromString(dateString2, "yyyy-MM-dd");
+
+        m_recordDoc->write(rownum, 13, myDate2);
+        m_recordDoc->write(rownum, 14, amount2.toDouble());
+    }
+    else {
+        m_recordDoc->write(rownum, 13, QVariant());
+        m_recordDoc->write(rownum, 14, QVariant());
+    }
+
+    if(date3 != "") {
+        QString dateString3 = date3.toString();
+
+        QDate myDate3 = QDate::fromString(dateString3, "yyyy-MM-dd");
+
+        m_recordDoc->write(rownum, 15, myDate3);
+        m_recordDoc->write(rownum, 16, amount3.toDouble());
+    }
+    else {
+        m_recordDoc->write(rownum, 15, QVariant());
+        m_recordDoc->write(rownum, 16, QVariant());
+    }
+
+
     //Misu는 미수금액
-    int Misu = m_recordDoc->read(rownum, 10).toInt() - IpAmount1 - IpAmount2 - IpAmount3;
-
-    QString dateString1 = date1.toString();
-
-    QDate myDate1 = QDate::fromString(dateString1, "yyyy-MM-dd");
-
-    QString dateString2 = date2.toString();
-
-    QDate myDate2 = QDate::fromString(dateString2, "yyyy-MM-dd");
-
-    QString dateString3 = date3.toString();
-
-    QDate myDate3 = QDate::fromString(dateString3, "yyyy-MM-dd");
-
-
-
-    m_recordDoc->write(rownum, 11, myDate1);
-    m_recordDoc->write(rownum, 12, IpAmount1);
-    //m_recordDoc->write(rownum, 13, Misu);
-    m_recordDoc->write(rownum, 13, myDate2);
-    m_recordDoc->write(rownum, 14, IpAmount2);
-    m_recordDoc->write(rownum, 15, myDate3);
-    m_recordDoc->write(rownum, 16, IpAmount3);
+    double Misu = m_recordDoc->read(rownum, 10).toInt() - IpAmount1 - IpAmount2 - IpAmount3;
 
     QVariant mae = m_recordDoc->read(rownum, 1);
     if(mae == "매입") {
@@ -674,7 +766,9 @@ QVariant DataHandler::test() {
     //doc.write(1, 1, "=5+4");
     //doc.save();
     //auto cell = doc.cellAt(1, 1);
-    QVariant val = doc.read(3, 1);
+    QVariant val = doc.read(2, 2);
+    qDebug() << val;
+
     return val;
 }
 
@@ -785,19 +879,19 @@ void DataHandler::deleteRecord(const QVariant &row)
         m_recordDoc->write(rownum, 3, supVar);
         m_recordDoc->write(rownum, 4, proVar);
         m_recordDoc->write(rownum, 5, sizeVar);
-        m_recordDoc->write(rownum, 6, priceVar);
-        m_recordDoc->write(rownum, 7, amountVar);
-        m_recordDoc->write(rownum, 8, ggVar);
-        m_recordDoc->write(rownum, 9, bgVar);
-        m_recordDoc->write(rownum, 10, hgVar);
+        m_recordDoc->write(rownum, 6, priceVar.toDouble());
+        m_recordDoc->write(rownum, 7, amountVar.toDouble());
+        m_recordDoc->write(rownum, 8, ggVar.toDouble());
+        m_recordDoc->write(rownum, 9, bgVar.toDouble());
+        m_recordDoc->write(rownum, 10, hgVar.toDouble());
         m_recordDoc->write(rownum, 11, ipdate1Var);
-        m_recordDoc->write(rownum, 12, ipam1Var);
+        m_recordDoc->write(rownum, 12, ipam1Var.toDouble());
         m_recordDoc->write(rownum, 13, ipdate2Var);
-        m_recordDoc->write(rownum, 14, ipam2Var);
+        m_recordDoc->write(rownum, 14, ipam2Var.toDouble());
         m_recordDoc->write(rownum, 15, ipdate3Var);
-        m_recordDoc->write(rownum, 16, ipam3Var);
-        m_recordDoc->write(rownum, 17, mijiVar);
-        m_recordDoc->write(rownum, 18, misuVar);
+        m_recordDoc->write(rownum, 16, ipam3Var.toDouble());
+        m_recordDoc->write(rownum, 17, mijiVar.toDouble());
+        m_recordDoc->write(rownum, 18, misuVar.toDouble());
 
 
         //다옮겼으면 이제 밑에로 한칸
@@ -805,7 +899,7 @@ void DataHandler::deleteRecord(const QVariant &row)
     }
     //이제 밑에꺼 삭제
     for(int i=0;i<18;i++) {
-        m_recordDoc->write(rownum, i+1, "");
+        m_recordDoc->write(rownum, i+1, QVariant());
     }
     m_recordDoc->save();
 
