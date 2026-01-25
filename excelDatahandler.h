@@ -9,8 +9,8 @@
 #include "xlsxformat.h"
 //#include "xlsxstyles_p.h"
 
-#ifndef DATAHANDLER_H
-#define DATAHANDLER_H
+#ifndef EXCELDATAHANDLER_H
+#define EXCELDATAHANDLER_H
 
 class DataHandler : public QObject
 {
@@ -118,6 +118,15 @@ public:
     Q_INVOKABLE QVariant test();
     Q_INVOKABLE void loadExcelInBackground();
 
+    QList<QStringList> readAllExcelRecord();
+    QVariantList readAllExcelCustomer();
+    QList<QStringList> readAllExcelItem();
+
+
+    void syncData(QVariantList &supplier, QList<QStringList> &product);
+    void syncRecord(QList<QStringList> &records);
+
+
 signals:
     //처음 로딩할때 좀 오래걸리니까 로딩화면 추가해줘야지
     void loadingStarted();
@@ -193,4 +202,4 @@ private:
     // void writeRecordFromExcel(QXlsx::Document &doc);
 };
 
-#endif // DATAHANDLER_H
+#endif // EXCELDATAHANDLER_H

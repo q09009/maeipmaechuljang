@@ -4,7 +4,7 @@ import QtQuick.Layouts
 
 Window {
     id: mtWindow
-    width: 680 // 표 형태라 너비를 조금 더 확보했습니다
+    width: 680
     height: 720
     visible: false
     title: "월별 통계"
@@ -148,6 +148,7 @@ Window {
                         Layout.fillWidth: true // 남은 공간 차지
                         Layout.preferredHeight: 25
                         model: mainWindow.productSearchList
+                        textRole: "name"
                         currentIndex: 0
                          // (기존 팝업 로직 유지)
                          popup: Popup {
@@ -178,55 +179,103 @@ Window {
                                 mtroot.mtGB = false;
                             }
 
-                            excelData.getMonthTotal(mtYearComboBox.currentText, mtGBComboBox.currentText, mtSupplierComboBox.currentText, mtProductComboBox.currentText);
+                            sqlData.monthTotalReady(mtYearComboBox.currentText, mtGBComboBox.currentText, mtSupplierComboBox.currentText, mtProductComboBox.currentText);
 
                             mtroot.mtModel = [];
                             mtroot.mtBungi = [];
                             mtroot.mtBangi = [];
 
-                            var tempModel = [];
-                            var tbun = [];
-                            var tban = [];
-                            var tempa = excelData.getMTAmount();
-                            var tempg = excelData.getMTGongga();
-                            var tempb = excelData.getMTBuga();
-                            var temph = excelData.getMTHapgye();
-                            if(mtGBComboBox.currentText === "매입") {
-                                var tempm = excelData.getMTMiji();
-                            }
-                            else {
-                                var tempm = excelData.getMTMisu();
-                            }
-                            //var tempm = excelData.getMTMisu();
+                            mtroot.mtModel = sqlData.getMonthTotal();
+                            mtroot.mtBungi = sqlData.getBungiTotal();
 
+                            var rawData = sqlData.getBangiTotal();
+                            var totalAmount = 0, totalGongga = 0, totalBuga = 0, totalHapgye = 0, totalMiji = 0, totalMisu = 0;
 
-                            var tempbungia=0; var tempbungig=0; var tempbungib=0; var tempbungih=0; var tempbungim=0;
-                            var tempbangia=0; var tempbangig=0; var tempbangib=0; var tempbangih=0; var tempbangim=0;
-                            var bangiasum=0; var bangigsum=0; var bangibsum=0; var bangihsum=0; var bangimsum=0;
-                            var tempbangi = ["상반기", "하반기", "총합"];
-
-                            for(let i=0; i<tempa.length; i++) {
-                                let a = tempa[i] || 0; let g = tempg[i] || 0; let b = tempb[i] || 0; let h = temph[i] || 0; let m = tempm[i] || 0;
-                                tempModel.push({amount: a, gongga: g, buga: b, hapgye: h, misu: m})
-
-                                tempbungia += a; tempbungig += g; tempbungib += b; tempbungih += h; tempbungim += m;
-                                tempbangia += a; tempbangig += g; tempbangib += b; tempbangih += h; tempbangim += m;
-
-                                if((i+1) % 3 == 0) {
-                                    tbun.push({amount: tempbungia, gongga: tempbungig, buga: tempbungib, hapgye: tempbungih, misu: tempbungim})
-                                    tempbungia = 0; tempbungig = 0; tempbungib = 0; tempbungih = 0; tempbungim = 0;
+                            // 데이터가 비어있을 경우를 대비한 안전장치
+                            if (rawData.length > 0) {
+                                // 1. 상반기 처리
+                                if (rawData[0]) {
+                                    rawData[0].gb = "상반기";
+                                    totalAmount += Number(rawData[0].amount || 0);
+                                    totalGongga += Number(rawData[0].gongga || 0);
+                                    totalBuga   += Number(rawData[0].buga || 0);
+                                    totalHapgye += Number(rawData[0].hapgye || 0);
+                                    totalMiji   += Number(rawData[0].miji || 0);
+                                    totalMisu   += Number(rawData[0].misu || 0);
                                 }
-                                if((i+1) % 6 == 0) {
-                                    tban.push({amount: tempbangia, gongga: tempbangig, buga: tempbangib, hapgye: tempbangih, misu: tempbangim, bg: tempbangi[(i+1)/6-1]})
-                                    bangiasum += tempbangia; bangigsum += tempbangig; bangibsum += tempbangib; bangihsum += tempbangih; bangimsum += tempbangim;
-                                    tempbangia = 0; tempbangig = 0; tempbangib = 0; tempbangih = 0; tempbangim = 0;
-                                }
-                            }
-                            tban.push({amount: bangiasum, gongga: bangigsum, buga: bangibsum, hapgye: bangihsum, misu: bangimsum, bg: tempbangi[2]})
+                                //console.log("첫번째 데이터:", JSON.stringify(rawData[0]));
 
-                            mtroot.mtModel = tempModel;
-                            mtroot.mtBungi = tbun;
-                            mtroot.mtBangi = tban;
+                                // 2. 하반기 처리
+                                if (rawData[1]) {
+                                    rawData[1].gb = "하반기";
+                                    totalAmount += Number(rawData[1].amount || 0);
+                                    totalGongga += Number(rawData[1].gongga || 0);
+                                    totalBuga   += Number(rawData[1].buga || 0);
+                                    totalHapgye += Number(rawData[1].hapgye || 0);
+                                    totalMiji   += Number(rawData[1].miji || 0);
+                                    totalMisu   += Number(rawData[1].misu || 0);
+                                } else {
+                                    // 하반기 데이터가 없으면 빈 껍데기라도 하나 넣어주는 게 리스트 모양새가 삼
+                                    rawData.push({ "gb": "하반기", "amount": 0, "gongga": 0, "buga": 0, "hapgye": 0, "miji": 0, "misu": 0 });
+                                }
+
+                                // 3. 총합 추가
+                                rawData.push({
+                                    "gb": "총합",
+                                    "amount": totalAmount,
+                                    "gongga": totalGongga,
+                                    "buga": totalBuga,
+                                    "hapgye": totalHapgye,
+                                    "miji": totalMiji,
+                                    "misu": totalMisu
+                                });
+                            }
+
+                            mtroot.mtBangi = rawData;
+
+                            // var tempModel = [];
+                            // var tbun = [];
+                            // var tban = [];
+                            // var tempa = excelData.getMTAmount();
+                            // var tempg = excelData.getMTGongga();
+                            // var tempb = excelData.getMTBuga();
+                            // var temph = excelData.getMTHapgye();
+                            // if(mtGBComboBox.currentText === "매입") {
+                            //     var tempm = excelData.getMTMiji();
+                            // }
+                            // else {
+                            //     var tempm = excelData.getMTMisu();
+                            // }
+                            // //var tempm = excelData.getMTMisu();
+
+
+                            // var tempbungia=0; var tempbungig=0; var tempbungib=0; var tempbungih=0; var tempbungim=0;
+                            // var tempbangia=0; var tempbangig=0; var tempbangib=0; var tempbangih=0; var tempbangim=0;
+                            // var bangiasum=0; var bangigsum=0; var bangibsum=0; var bangihsum=0; var bangimsum=0;
+                            // var tempbangi = ["상반기", "하반기", "총합"];
+
+                            // for(let i=0; i<tempa.length; i++) {
+                            //     let a = tempa[i] || 0; let g = tempg[i] || 0; let b = tempb[i] || 0; let h = temph[i] || 0; let m = tempm[i] || 0;
+                            //     tempModel.push({amount: a, gongga: g, buga: b, hapgye: h, misu: m})
+
+                            //     tempbungia += a; tempbungig += g; tempbungib += b; tempbungih += h; tempbungim += m;
+                            //     tempbangia += a; tempbangig += g; tempbangib += b; tempbangih += h; tempbangim += m;
+
+                            //     if((i+1) % 3 == 0) {
+                            //         tbun.push({amount: tempbungia, gongga: tempbungig, buga: tempbungib, hapgye: tempbungih, misu: tempbungim})
+                            //         tempbungia = 0; tempbungig = 0; tempbungib = 0; tempbungih = 0; tempbungim = 0;
+                            //     }
+                            //     if((i+1) % 6 == 0) {
+                            //         tban.push({amount: tempbangia, gongga: tempbangig, buga: tempbangib, hapgye: tempbangih, misu: tempbangim, bg: tempbangi[(i+1)/6-1]})
+                            //         bangiasum += tempbangia; bangigsum += tempbangig; bangibsum += tempbangib; bangihsum += tempbangih; bangimsum += tempbangim;
+                            //         tempbangia = 0; tempbangig = 0; tempbangib = 0; tempbangih = 0; tempbangim = 0;
+                            //     }
+                            // }
+                            // tban.push({amount: bangiasum, gongga: bangigsum, buga: bangibsum, hapgye: bangihsum, misu: bangimsum, bg: tempbangi[2]})
+
+                            // mtroot.mtModel = tempModel;
+                            // mtroot.mtBungi = tbun;
+                            // mtroot.mtBangi = tban;
                         }
                     }
                 }
@@ -276,7 +325,7 @@ Window {
                     ExcelCell { text: formatNum(modelData.gongga); Layout.preferredWidth: 130 }
                     ExcelCell { text: formatNum(modelData.buga); Layout.preferredWidth: 100 }
                     ExcelCell { text: formatNum(modelData.hapgye); Layout.preferredWidth: 130 }
-                    ExcelCell { text: formatNum(modelData.misu); Layout.preferredWidth: 130 }
+                    ExcelCell { text: mtroot.mtGB ? formatNum(modelData.miji) : formatNum(modelData.misu); Layout.preferredWidth: 130 }
                 }
             }
 
@@ -302,7 +351,7 @@ Window {
                     ExcelCell { text: formatNum(modelData.gongga); Layout.preferredWidth: 130 }
                     ExcelCell { text: formatNum(modelData.buga); Layout.preferredWidth: 100 }
                     ExcelCell { text: formatNum(modelData.hapgye); Layout.preferredWidth: 130 }
-                    ExcelCell { text: formatNum(modelData.misu); Layout.preferredWidth: 130 }
+                    ExcelCell { text: mtroot.mtGB ? formatNum(modelData.miji) : formatNum(modelData.misu); Layout.preferredWidth: 130 }
                 }
             }
 
@@ -324,7 +373,7 @@ Window {
                     spacing: -1
 
                     ExcelCell {
-                        text: modelData.bg;
+                        text: modelData.gb;
                         Layout.preferredWidth: 80;
                         align: "center";
                         color: "#e1f5fe"; // 반기 컬럼 색상
@@ -334,7 +383,7 @@ Window {
                     ExcelCell { text: formatNum(modelData.gongga); Layout.preferredWidth: 130; fontBold: true }
                     ExcelCell { text: formatNum(modelData.buga); Layout.preferredWidth: 100; fontBold: true }
                     ExcelCell { text: formatNum(modelData.hapgye); Layout.preferredWidth: 130; fontBold: true }
-                    ExcelCell { text: formatNum(modelData.misu); Layout.preferredWidth: 130; fontBold: true }
+                    ExcelCell { text: mtroot.mtGB ? formatNum(modelData.miji) : formatNum(modelData.misu); Layout.preferredWidth: 130; fontBold: true }
                 }
             }
 

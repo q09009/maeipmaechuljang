@@ -3,7 +3,9 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QDebug>
-#include "datahandler.h"
+#include "excelDatahandler.h"
+#include "sqlDatahandler.h"
+#include "syncManager.h"
 
 #include <QList>
 
@@ -17,11 +19,16 @@ int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
 
-    DataHandler handler(&app);
+    DataHandler excelhandler(&app);
+    SqlHandler sqlHandler(&app);
+    SyncManager syncManager(&app);
+    syncManager.setHandlers(&sqlHandler, &excelhandler);
 
     QQmlApplicationEngine engine;
 
-    engine.rootContext()->setContextProperty("excelData", &handler);
+    engine.rootContext()->setContextProperty("excelData", &excelhandler);
+    engine.rootContext()->setContextProperty("sqlData", &sqlHandler);
+    engine.rootContext()->setContextProperty("sync", &syncManager);
 
     const QUrl url(QStringLiteral("qrc:/main.qml"));
 

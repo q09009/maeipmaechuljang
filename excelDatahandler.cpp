@@ -1,4 +1,4 @@
-#include "datahandler.h"
+#include "excelDatahandler.h"
 #include <QDebug>
 #include <QVariant>
 #include <QString>
@@ -12,6 +12,124 @@ DataHandler::DataHandler(QObject *parent) : QObject(parent)
     // 생성자에서는 초기화 작업만 수행합니다.
     // 엑셀 로드는 QML에서 loadExcelData()가 호출될 때 진행됩니다.
 }
+
+QList<QStringList> DataHandler::readAllExcelRecord() {
+    QXlsx::Document doc("data/record.xlsx");
+    QList<QStringList> allRows;
+
+    if (!doc.load()) {
+        qDebug() << "엑셀 파일을 열 수 없습니다!";
+        return allRows;
+    }
+
+    int lastRow = doc.dimension().lastRow();
+
+    // 2행부터 시작 (1행은 제목줄이니까)
+    for (int r = 2; r <= lastRow; ++r) {
+        QStringList rowData;
+        for (int c = 1; c <= 16; ++c) {
+            // 셀이 비어있으면 빈 문자열, 있으면 문자열로 변환
+            rowData << doc.read(r, c).toString().trimmed();
+        }
+        allRows.append(rowData);
+    }
+    return allRows;
+}
+
+QVariantList DataHandler::readAllExcelCustomer() {
+    QXlsx::Document doc("data/data.xlsx");
+    QVariantList customers;
+
+    if(!doc.load()) {
+        qDebug() << "엑셀 파일을 열 수 없습니다!";
+        return customers;
+    }
+
+    int row = 2;
+    while(true) {
+        QVariant cus = doc.read(row, 1);
+
+        if(!cus.isValid()) {
+            break;
+        }
+        else {
+            customers.append(cus);
+            row++;
+        }
+    }
+    return customers;
+}
+
+QList<QStringList> DataHandler::readAllExcelItem() {
+    QXlsx::Document doc("data/data.xlsx");
+    QList<QStringList> items;
+
+    if(!doc.load()) {
+        qDebug() << "엑셀 파일을 열 수 없습니다!";
+        return items;
+    }
+
+    int row = 2;
+    while(true) {
+        QVariant var = doc.read(row, 2);
+
+        if(!var.isValid()) {
+            break;
+        }
+        else {
+            QStringList rowData;
+            for(int i=2;i<5;i++) {
+                rowData << doc.read(row, i).toString().trimmed();
+            }
+            items.append(rowData);
+            row++;
+        }
+    }
+    return items;
+}
+
+void DataHandler::syncData(QVariantList &supplier, QList<QStringList> &product) {
+    QXlsx::Document doc("data/data.xlsx");
+
+    if(!doc.load()) {
+        qDebug() << "엑셀 파일을 열 수 없습니다!";
+        return;
+    }
+
+    int row = 2;
+    for(const QVariant &sup : supplier) {
+        doc.write(row, 1, sup);
+        row++;
+    }
+    row = 2;
+    for(const QStringList &pro : product) {
+        doc.write(row, 2, pro.at(0));
+        doc.write(row, 3, pro.at(1));
+        doc.write(row, 4, pro.at(2));
+        row++;
+    }
+    doc.save();
+}
+
+void DataHandler::syncRecord(QList<QStringList> &records) {
+    QXlsx::Document doc("data/record.xlsx");
+
+    if(!doc.load()) {
+        qDebug() << "엑셀 파일을 열 수 없습니다!";
+        return;
+    }
+
+    int row = 2;
+    for(const QStringList &r : records) {
+        for(int i=0;i<18;i++) {
+            doc.write(row, i+1, r.at(i));
+        }
+        row++;
+    }
+    doc.save();
+}
+
+
 
 void DataHandler::ensureRecordLoaded() {
     if(!m_recordDoc) {
@@ -771,7 +889,6 @@ QVariant DataHandler::test() {
 
     return val;
 }
-
 
 void DataHandler::editDataSupplier(const QVariant &name, const QVariant &row) {
     ensureDataLoaded();

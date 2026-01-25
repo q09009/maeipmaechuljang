@@ -5,6 +5,7 @@ project(maeipmaechuljang VERSION 0.1 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Quick Concurrent)
+find_package(Qt6 REQUIRED COMPONENTS Sql)
 
 qt_standard_project_setup(REQUIRES 6.8)
 
@@ -19,9 +20,13 @@ qt_add_qml_module(appmaeipmaechuljang
     QML_FILES
         Main.qml
         QML_FILES qml/MyCalendar.qml
-        SOURCES datahandler.h
-        SOURCES datahandler.cpp
+        SOURCES excelDatahandler.h
+        SOURCES excelDatahandler.cpp
         QML_FILES qml/MonthTotal.qml
+        SOURCES sqlDatahandler.h
+        SOURCES sqlDatahandler.cpp
+        SOURCES syncManager.h
+        SOURCES syncManager.cpp
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
@@ -40,6 +45,7 @@ target_link_libraries(appmaeipmaechuljang
         Qt6::Quick
         QXlsx::QXlsx
         Qt6::Concurrent
+        Qt6::Sql
 )
 
 include(GNUInstallDirs)
