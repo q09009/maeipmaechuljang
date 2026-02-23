@@ -10,6 +10,26 @@ ApplicationWindow {
     height: 720
     title: "매입매출장"
 
+    // [Theme] 세련된 디자인용 색상/스타일
+    readonly property color themeBg: "#f4f6f9"
+    readonly property color themeCard: "#ffffff"
+    readonly property color themeBorder: "#e2e6ea"
+    readonly property color themePrimary: "#2563eb"
+    readonly property color themePrimaryHover: "#1d4ed8"
+    readonly property color themeSuccess: "#059669"
+    readonly property color themeSuccessBg: "#ecfdf5"
+    readonly property color themeDanger: "#dc2626"
+    readonly property color themeDangerBg: "#fef2f2"
+    readonly property color themeMuted: "#64748b"
+    readonly property int radiusSm: 6
+    readonly property int radiusMd: 8
+    readonly property int radiusLg: 10
+
+    background: Rectangle { color: mainWindow.themeBg }
+
+    font.pixelSize: 13
+    font.family: "Segoe UI", "Malgun Gothic", sans-serif
+
     // [Logic & Data] - 변경 없음
 
     property var supplierList: []
@@ -135,11 +155,18 @@ ApplicationWindow {
     Popup {
         id: supplierEditPopup
         property var row
-        width: 300; height: 100
+        width: 320; height: 110
         anchors.centerIn: parent
         modal: true
         closePolicy: Popup.CloseOnPressOutside
+        padding: 16
+        background: Rectangle {
+            color: mainWindow.themeCard
+            border.color: mainWindow.themeBorder
+            radius: mainWindow.radiusLg
+        }
         contentItem: RowLayout {
+            spacing: 12
             ColumnLayout {
                 ComboBox {
                     id: supplierEditComboBox
@@ -185,17 +212,24 @@ ApplicationWindow {
                     editFinished.open();
                 }
             }
-            Button { text: qsTr("닫기"); onClicked: supplierEditPopup.close() }
+            Button {
+                text: qsTr("닫기")
+                onClicked: supplierEditPopup.close()
+                background: Rectangle { color: parent.hovered ? "#f1f5f9" : mainWindow.themeCard; radius: mainWindow.radiusSm; border.color: mainWindow.themeBorder; border.width: 1 }
+            }
         }
     }
 
     Popup {
         id: supplierDeletePopup
-        width: 300; height: 100
+        width: 320; height: 110
         anchors.centerIn: parent
         modal: true
         closePolicy: Popup.CloseOnPressOutside
+        padding: 16
+        background: Rectangle { color: mainWindow.themeCard; border.color: mainWindow.themeBorder; radius: mainWindow.radiusLg }
         contentItem: RowLayout {
+            spacing: 12
             ColumnLayout {
                 ComboBox {
                     id: supplierDeleteComboBox
@@ -238,17 +272,24 @@ ApplicationWindow {
                     deleteFinished.open();
                 }
             }
-            Button { text: qsTr("닫기"); onClicked: supplierDeletePopup.close() }
+            Button {
+                text: qsTr("닫기")
+                onClicked: supplierDeletePopup.close()
+                background: Rectangle { color: parent.hovered ? "#f1f5f9" : mainWindow.themeCard; radius: mainWindow.radiusSm; border.color: mainWindow.themeBorder; border.width: 1 }
+            }
         }
     }
 
     Popup {
         id: productDeletePopup
-        width: 300; height: 100
+        width: 320; height: 110
         anchors.centerIn: parent
         modal: true
         closePolicy: Popup.CloseOnPressOutside
+        padding: 16
+        background: Rectangle { color: mainWindow.themeCard; border.color: mainWindow.themeBorder; radius: mainWindow.radiusLg }
         contentItem: RowLayout {
+            spacing: 12
             ColumnLayout {
                 ComboBox {
                     id: productDeleteComboBox
@@ -292,17 +333,24 @@ ApplicationWindow {
                     deleteFinished.open();
                 }
             }
-            Button { text: qsTr("닫기"); onClicked: productDeletePopup.close() }
+            Button {
+                text: qsTr("닫기")
+                onClicked: productDeletePopup.close()
+                background: Rectangle { color: parent.hovered ? "#f1f5f9" : mainWindow.themeCard; radius: mainWindow.radiusSm; border.color: mainWindow.themeBorder; border.width: 1 }
+            }
         }
     }
 
     Popup {
         id: supplierAddPopup
-        width: 300; height: 100
+        width: 340; height: 110
         anchors.centerIn: parent
         modal: true
         closePolicy: Popup.CloseOnPressOutside
+        padding: 16
+        background: Rectangle { color: mainWindow.themeCard; border.color: mainWindow.themeBorder; radius: mainWindow.radiusLg }
         contentItem: RowLayout {
+            spacing: 12
             TextField { id: supplierAddTextfield; placeholderText: qsTr("업체명 입력"); Layout.fillWidth: true }
             Button {
                 text: qsTr("입력")
@@ -317,8 +365,14 @@ ApplicationWindow {
                     supplierAddPopup.close();
                     recordAddedPopup.open();
                 }
+                background: Rectangle { color: parent.pressed ? mainWindow.themePrimaryHover : (parent.hovered ? mainWindow.themePrimaryHover : mainWindow.themePrimary); radius: mainWindow.radiusSm }
+                contentItem: Text { text: "입력"; color: "white"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
             }
-            Button { text: qsTr("X"); onClicked: supplierAddPopup.close() }
+            Button {
+                text: qsTr("닫기")
+                onClicked: supplierAddPopup.close()
+                background: Rectangle { color: parent.hovered ? "#f1f5f9" : mainWindow.themeCard; radius: mainWindow.radiusSm; border.color: mainWindow.themeBorder; border.width: 1 }
+            }
         }
     }
 
@@ -326,11 +380,14 @@ ApplicationWindow {
     Popup {
         id: productEditPopup
         property var row
-        width: 450; height: 100
+        width: 480; height: 120
         anchors.centerIn: parent
         modal: true
         closePolicy: Popup.CloseOnPressOutside
+        padding: 16
+        background: Rectangle { color: mainWindow.themeCard; border.color: mainWindow.themeBorder; radius: mainWindow.radiusLg }
         contentItem: RowLayout {
+            spacing: 12
             ColumnLayout {
                 ComboBox {
                     id: productEditComboBox
@@ -383,17 +440,24 @@ ApplicationWindow {
                     editFinished.open();
                 }
             }
-            Button { text: qsTr("닫기"); onClicked: productEditPopup.close() }
+            Button {
+                text: qsTr("닫기")
+                onClicked: productEditPopup.close()
+                background: Rectangle { color: parent.hovered ? "#f1f5f9" : mainWindow.themeCard; radius: mainWindow.radiusSm; border.color: mainWindow.themeBorder; border.width: 1 }
+            }
         }
     }
 
     Popup {
         id: productAddPopup
-        width: 450; height: 100
+        width: 480; height: 110
         anchors.centerIn: parent
         modal: true
         closePolicy: Popup.CloseOnPressOutside
+        padding: 16
+        background: Rectangle { color: mainWindow.themeCard; border.color: mainWindow.themeBorder; radius: mainWindow.radiusLg }
         contentItem: RowLayout {
+            spacing: 12
             TextField { id: productAddName; placeholderText: qsTr("상품명"); Layout.fillWidth: true }
             TextField { id: productAddSize; placeholderText: qsTr("규격"); Layout.preferredWidth: 80 }
             TextField { id: productAddPrice; placeholderText: qsTr("단가"); Layout.preferredWidth: 100 }
@@ -412,8 +476,14 @@ ApplicationWindow {
                     productAddPopup.close();
                     recordAddedPopup.open();
                 }
+                background: Rectangle { color: parent.pressed ? mainWindow.themePrimaryHover : (parent.hovered ? mainWindow.themePrimaryHover : mainWindow.themePrimary); radius: mainWindow.radiusSm }
+                contentItem: Text { text: "입력"; color: "white"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
             }
-            Button { text: qsTr("X"); onClicked: productAddPopup.close() }
+            Button {
+                text: qsTr("닫기")
+                onClicked: productAddPopup.close()
+                background: Rectangle { color: parent.hovered ? "#f1f5f9" : mainWindow.themeCard; radius: mainWindow.radiusSm; border.color: mainWindow.themeBorder; border.width: 1 }
+            }
         }
     }
     MonthTotal {
@@ -422,21 +492,34 @@ ApplicationWindow {
 
     Popup {
         id: infoPopup
-        width: 200; height: 100
+        width: 240; height: 120
         anchors.centerIn: parent
         modal: true
         closePolicy: Popup.CloseOnPressOutside
+        padding: 16
+        background: Rectangle { color: mainWindow.themeCard; border.color: mainWindow.themeBorder; radius: mainWindow.radiusLg }
         contentItem: ColumnLayout {
+            spacing: 8
             Text {
                 text: qsTr("매입매출장 프로그램")
+                font.pixelSize: 14
+                font.bold: true
+                color: mainWindow.themeMuted
                 Layout.alignment: Qt.AlignLeft
             }
             Text {
                 text: qsTr("버전 1.4")
+                font.pixelSize: 12
+                color: mainWindow.themeMuted
                 Layout.alignment: Qt.AlignLeft
             }
-
-            Button { text: qsTr("닫기"); Layout.alignment: Qt.AlignRight; onClicked: infoPopup.close() }
+            Item { Layout.preferredHeight: 8 }
+            Button {
+                text: qsTr("닫기")
+                Layout.alignment: Qt.AlignRight
+                onClicked: infoPopup.close()
+                background: Rectangle { color: parent.hovered ? "#f1f5f9" : mainWindow.themeCard; radius: mainWindow.radiusSm; border.color: mainWindow.themeBorder; border.width: 1 }
+            }
         }
     }
 
@@ -478,27 +561,37 @@ ApplicationWindow {
         property alias labeltext: alabel.text
         property alias yestext: yes.text
         property alias notext: no.text
-        width: 300; height: 100
+        width: 320; height: 120
         anchors.centerIn: parent
         modal: true
         closePolicy: Popup.CloseOnPressOutside
+        padding: 16
+        background: Rectangle { color: mainWindow.themeCard; border.color: mainWindow.themeBorder; radius: mainWindow.radiusLg }
         contentItem: ColumnLayout {
+            spacing: 16
             Text {
                 id: alabel
-                Layout.alignment: Qt.AlignCenter
+                Layout.alignment: Qt.AlignHCenter
+                font.pixelSize: 13
+                color: mainWindow.themeMuted
+                wrapMode: Text.WordWrap
             }
             RowLayout {
                 Layout.alignment: Qt.AlignHCenter
+                spacing: 10
                 Button {
                     id: yes
                     onClicked: {
                         aPopup.yesClicked();
                         aPopup.close();
                     }
+                    background: Rectangle { color: parent.pressed ? mainWindow.themePrimaryHover : (parent.hovered ? mainWindow.themePrimaryHover : mainWindow.themePrimary); radius: mainWindow.radiusSm }
+                    contentItem: Text { text: yes.text; color: "white"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; font: yes.font }
                 }
                 Button {
                     id: no
                     onClicked: aPopup.close()
+                    background: Rectangle { color: parent.hovered ? "#f1f5f9" : mainWindow.themeCard; radius: mainWindow.radiusSm; border.color: mainWindow.themeBorder; border.width: 1 }
                 }
             }
         }
@@ -561,13 +654,21 @@ ApplicationWindow {
         id: rPopup
         property alias text: label.text
         property alias textColor: label.color
-        width: 200; height: 100
+        width: 220; height: 110
         anchors.centerIn: parent
         modal: true
         closePolicy: Popup.CloseOnPressOutside
+        padding: 16
+        background: Rectangle { color: mainWindow.themeCard; border.color: mainWindow.themeBorder; radius: mainWindow.radiusLg }
         contentItem: ColumnLayout {
-            Text { id: label; font.bold: true; Layout.alignment: Qt.AlignHCenter }
-            Button { text: qsTr("닫기"); Layout.alignment: Qt.AlignHCenter; onClicked: rPopup.close() }
+            spacing: 12
+            Text { id: label; font.bold: true; font.pixelSize: 14; color: mainWindow.themeMuted; Layout.alignment: Qt.AlignHCenter }
+            Button {
+                text: qsTr("닫기")
+                Layout.alignment: Qt.AlignHCenter
+                onClicked: rPopup.close()
+                background: Rectangle { color: parent.hovered ? "#f1f5f9" : mainWindow.themeCard; radius: mainWindow.radiusSm; border.color: mainWindow.themeBorder; border.width: 1 }
+            }
         }
     }
 
@@ -608,59 +709,73 @@ ApplicationWindow {
 
     Popup {
         id: ipgeumPopup
-
-
-        width: 400; height: 120
+        width: 420; height: 140
         anchors.centerIn: parent
         modal: true
         closePolicy: Popup.CloseOnPressOutside
+        padding: 16
+        background: Rectangle { color: mainWindow.themeCard; border.color: mainWindow.themeBorder; radius: mainWindow.radiusLg }
         contentItem: ColumnLayout {
+            spacing: 10
             RowLayout {
-                Text { text: qsTr("입금일1") }
+                spacing: 8
+                Text { text: qsTr("입금일1"); font.pixelSize: 12; color: mainWindow.themeMuted }
                 TextField { id: ipgeumDate1; placeholderText: qsTr("YYYY-MM-DD"); text:mainWindow.ipgeumDate1==="" ? "" : mainWindow.ipgeumDate1 ; Layout.fillWidth: true }
-                Text { text: qsTr("입금액1") }
+                Text { text: qsTr("입금액1"); font.pixelSize: 12; color: mainWindow.themeMuted }
                 TextField { id: ipgeumAmount1; text:mainWindow.ipgeumAmount1 ; Layout.fillWidth: true }
             }
             RowLayout {
-                Text { text: qsTr("입금일2") }
+                spacing: 8
+                Text { text: qsTr("입금일2"); font.pixelSize: 12; color: mainWindow.themeMuted }
                 TextField { id: ipgeumDate2; placeholderText: qsTr("YYYY-MM-DD"); text:mainWindow.ipgeumDate2==="" ? "" : mainWindow.ipgeumDate2 ; Layout.fillWidth: true }
-                Text { text: qsTr("입금액2") }
+                Text { text: qsTr("입금액2"); font.pixelSize: 12; color: mainWindow.themeMuted }
                 TextField { id: ipgeumAmount2; text:mainWindow.ipgeumAmount2 ; Layout.fillWidth: true }
             }
             RowLayout {
-                Text { text: qsTr("입금일3") }
+                spacing: 8
+                Text { text: qsTr("입금일3"); font.pixelSize: 12; color: mainWindow.themeMuted }
                 TextField { id: ipgeumDate3; placeholderText: qsTr("YYYY-MM-DD"); text:mainWindow.ipgeumDate3==="" ? "" : mainWindow.ipgeumDate3 ; Layout.fillWidth: true }
-                Text { text: qsTr("입금액3") }
+                Text { text: qsTr("입금액3"); font.pixelSize: 12; color: mainWindow.themeMuted }
                 TextField { id: ipgeumAmount3; text:mainWindow.ipgeumAmount3 ; Layout.fillWidth: true }
             }
             RowLayout {
                 Layout.alignment: Qt.AlignRight
-
-
+                spacing: 8
                 Button {
                     text: qsTr("입력")
                     onClicked: { sqlData.writeRecordIp(ipgeumDate1.text, ipgeumAmount1.text, ipgeumDate2.text, ipgeumAmount2.text, ipgeumDate3.text, ipgeumAmount3.text, searchResultList.selectedRow); ipgeumPopup.close(); }
+                    background: Rectangle { color: parent.pressed ? mainWindow.themePrimaryHover : (parent.hovered ? mainWindow.themePrimaryHover : mainWindow.themePrimary); radius: mainWindow.radiusSm }
+                    contentItem: Text { text: "입력"; color: "white"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                 }
-                Button { text: qsTr("취소"); onClicked: ipgeumPopup.close() }
+                Button {
+                    text: qsTr("취소")
+                    onClicked: ipgeumPopup.close()
+                    background: Rectangle { color: parent.hovered ? "#f1f5f9" : mainWindow.themeCard; radius: mainWindow.radiusSm; border.color: mainWindow.themeBorder; border.width: 1 }
+                }
             }
         }
     }
 
     Popup {
         id: ilgwalipgeumPopup
-        width: 300; height: 100
+        width: 340; height: 120
         anchors.centerIn: parent
         modal: true
         closePolicy: Popup.CloseOnPressOutside
+        padding: 16
+        background: Rectangle { color: mainWindow.themeCard; border.color: mainWindow.themeBorder; radius: mainWindow.radiusLg }
         contentItem: ColumnLayout {
+            spacing: 12
             RowLayout {
-                Text { text: qsTr("입금일") }
+                spacing: 8
+                Text { text: qsTr("입금일"); font.pixelSize: 12; color: mainWindow.themeMuted }
                 TextField { id: ipgeumDate; placeholderText: qsTr("YYYY-MM-DD"); Layout.fillWidth: true }
-                Text { text: qsTr("입금액") }
+                Text { text: qsTr("입금액"); font.pixelSize: 12; color: mainWindow.themeMuted }
                 TextField { id: ipgeumAmount; Layout.fillWidth: true }
             }
-            RowLayout{
+            RowLayout {
                 Layout.alignment: Qt.AlignRight
+                spacing: 8
                 Button {
                     text: qsTr("입력")
                     onClicked: {
@@ -668,44 +783,84 @@ ApplicationWindow {
                         recordAddedPopup.open()
                         ilgwalipgeumPopup.close()
                     }
+                    background: Rectangle { color: parent.pressed ? mainWindow.themePrimaryHover : (parent.hovered ? mainWindow.themePrimaryHover : mainWindow.themePrimary); radius: mainWindow.radiusSm }
+                    contentItem: Text { text: "입력"; color: "white"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                 }
-                Button { text: qsTr("X"); onClicked: ilgwalipgeumPopup.close() }
+                Button {
+                    text: qsTr("닫기")
+                    onClicked: ilgwalipgeumPopup.close()
+                    background: Rectangle { color: parent.hovered ? "#f1f5f9" : mainWindow.themeCard; radius: mainWindow.radiusSm; border.color: mainWindow.themeBorder; border.width: 1 }
+                }
             }
         }
     }
 
-    Popup { id: calendarPopup; width: 270; height: 300; anchors.centerIn: parent; modal: true; closePolicy: Popup.CloseOnPressOutside; contentItem: MyCalendar { anchors.fill: parent; calendarParent: 0 } }
-    Popup { id: scalendarPopup1; width: 270; height: 300; anchors.centerIn: parent; modal: true; closePolicy: Popup.CloseOnPressOutside; contentItem: MyCalendar { anchors.fill: parent; calendarParent: 1 } }
-    Popup { id: scalendarPopup2; width: 270; height: 300; anchors.centerIn: parent; modal: true; closePolicy: Popup.CloseOnPressOutside; contentItem: MyCalendar { anchors.fill: parent; calendarParent: 2 } }
+    Popup {
+        id: calendarPopup
+        width: 294; height: 324
+        anchors.centerIn: parent
+        modal: true
+        closePolicy: Popup.CloseOnPressOutside
+        padding: 8
+        background: Rectangle { color: mainWindow.themeCard; border.color: mainWindow.themeBorder; radius: mainWindow.radiusLg }
+        contentItem: MyCalendar { anchors.fill: parent; calendarParent: 0 }
+    }
+    Popup {
+        id: scalendarPopup1
+        width: 294; height: 324
+        anchors.centerIn: parent
+        modal: true
+        closePolicy: Popup.CloseOnPressOutside
+        padding: 8
+        background: Rectangle { color: mainWindow.themeCard; border.color: mainWindow.themeBorder; radius: mainWindow.radiusLg }
+        contentItem: MyCalendar { anchors.fill: parent; calendarParent: 1 }
+    }
+    Popup {
+        id: scalendarPopup2
+        width: 294; height: 324
+        anchors.centerIn: parent
+        modal: true
+        closePolicy: Popup.CloseOnPressOutside
+        padding: 8
+        background: Rectangle { color: mainWindow.themeCard; border.color: mainWindow.themeBorder; radius: mainWindow.radiusLg }
+        contentItem: MyCalendar { anchors.fill: parent; calendarParent: 2 }
+    }
 
 
     // [Main Layout]
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 15
-        spacing: 15
+        anchors.margins: 16
+        spacing: 14
 
         // ==================================================================
         // 1. 입력 영역
         // ==================================================================
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 60
-            color: "#FFFFFF"
-            border.color: "#DDDDDD"
-            radius: 5
+            Layout.preferredHeight: 64
+            color: mainWindow.themeCard
+            border.color: mainWindow.themeBorder
+            border.width: 1
+            radius: mainWindow.radiusMd
 
             RowLayout {
                 anchors.fill: parent
-                anchors.margins: 10
-                spacing: 10
+                anchors.margins: 12
+                spacing: 12
 
                 Button {
                     id: maeip
                     property bool mae: true
                     text: qsTr(maeip.mae ? "매입" : "매출")
                     onClicked: maeip.mae = !maeip.mae
-                    background: Rectangle { color: maeip.mae ? "#e1f5fe" : "#ffebee"; radius: 3; border.color: "#ccc" }
+                    font.bold: true
+                    background: Rectangle {
+                        color: maeip.mae ? "#dbeafe" : "#fee2e2"
+                        radius: mainWindow.radiusSm
+                        border.color: maeip.mae ? "#93c5fd" : "#fecaca"
+                        border.width: 1
+                    }
                 }
 
                 Button {
@@ -713,6 +868,12 @@ ApplicationWindow {
                     property date currentDate : new Date()
                     text: qsTr(`${currentDate.getFullYear()}-${currentDate.getMonth()+1}-${currentDate.getDate()}`)
                     onClicked: calendarPopup.open()
+                    background: Rectangle {
+                        color: parent.hovered ? "#f1f5f9" : mainWindow.themeCard
+                        radius: mainWindow.radiusSm
+                        border.color: mainWindow.themeBorder
+                        border.width: 1
+                    }
                 }
 
                 // 콤보박스 (사용자 디자인 복원 + Layout 적용)
@@ -763,8 +924,8 @@ ApplicationWindow {
                     }
                 }
 
-                TextField { id: textSize; readOnly: true; text: mainWindow.productList[productComboBox.currentIndex].spec; Layout.preferredWidth: 80; placeholderText: "규격" }
-                TextField { id: textPrice; text: Number(mainWindow.productList[productComboBox.currentIndex].price).toFixed(0); Layout.preferredWidth: 100; placeholderText: "단가"; horizontalAlignment: Text.AlignRight }
+                TextField { id: textSize; readOnly: true; text: mainWindow.productList.length > 0 && mainWindow.productList[productComboBox.currentIndex] ? mainWindow.productList[productComboBox.currentIndex].spec : ""; Layout.preferredWidth: 80; placeholderText: "규격" }
+                TextField { id: textPrice; text: mainWindow.productList.length > 0 && mainWindow.productList[productComboBox.currentIndex] ? Number(mainWindow.productList[productComboBox.currentIndex].price).toFixed(0) : ""; Layout.preferredWidth: 100; placeholderText: "단가"; horizontalAlignment: Text.AlignRight }
                 TextField { id: textAmount; text: "1"; Layout.preferredWidth: 50; horizontalAlignment: Text.AlignRight }
 
                 Button {
@@ -772,6 +933,12 @@ ApplicationWindow {
                     property bool ta: true
                     text: qsTr(taxornot.ta ? "부가세 별도" : "부가세 없음")
                     onClicked: taxornot.ta = !taxornot.ta
+                    background: Rectangle {
+                        color: parent.hovered ? "#f1f5f9" : mainWindow.themeCard
+                        radius: mainWindow.radiusSm
+                        border.color: mainWindow.themeBorder
+                        border.width: 1
+                    }
                 }
 
                 TextField { id: textGongGa; readOnly: true; Layout.fillWidth: true; horizontalAlignment: Text.AlignRight; placeholderText: "공급가액";
@@ -808,10 +975,16 @@ ApplicationWindow {
                     id: addRecord
                     text: qsTr("등록")
                     highlighted: true
+                    font.bold: true
                     onClicked: {
                         sqlData.writeExcelRecord(maeip.mae, calendarButton.currentDate, supplierComboBox.currentText, productComboBox.currentText, textSize.text, textPrice.text, textAmount.text, taxornot.ta)
                         recordAddedPopup.open()
                     }
+                    background: Rectangle {
+                        color: parent.pressed ? mainWindow.themePrimaryHover : (parent.hovered ? mainWindow.themePrimaryHover : mainWindow.themePrimary)
+                        radius: mainWindow.radiusSm
+                    }
+                    contentItem: Text { text: addRecord.text; color: "white"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; font: addRecord.font }
                 }
             }
         }
@@ -821,24 +994,49 @@ ApplicationWindow {
         // ==================================================================
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 50
-            color: "#F5F7FA"
-            border.color: "#DDDDDD"
-            radius: 5
+            Layout.preferredHeight: 52
+            color: mainWindow.themeCard
+            border.color: mainWindow.themeBorder
+            border.width: 1
+            radius: mainWindow.radiusMd
 
             RowLayout {
                 anchors.fill: parent
-                anchors.margins: 10
-                spacing: 10
+                anchors.margins: 12
+                spacing: 12
 
-                Text { text: "📅 기간"; font.bold: true }
-                Button { id: searchCalendarFirst; property date currentDate : new Date(); text: qsTr(`${currentDate.getFullYear()}-${currentDate.getMonth()+1}-${currentDate.getDate()}`); onClicked: scalendarPopup1.open() }
-                Text { text: "~" }
-                Button { id: searchCalendarSecond; property date currentDate : new Date(); text: qsTr(`${currentDate.getFullYear()}-${currentDate.getMonth()+1}-${currentDate.getDate()}`); onClicked: scalendarPopup2.open() }
+                Text { text: "기간"; font.bold: true; color: mainWindow.themeMuted; font.pixelSize: 12 }
+                Button {
+                    id: searchCalendarFirst
+                    property date currentDate : new Date()
+                    text: qsTr(`${currentDate.getFullYear()}-${currentDate.getMonth()+1}-${currentDate.getDate()}`)
+                    onClicked: scalendarPopup1.open()
+                    background: Rectangle { color: parent.hovered ? "#f1f5f9" : mainWindow.themeCard; radius: mainWindow.radiusSm; border.color: mainWindow.themeBorder; border.width: 1 }
+                }
+                Text { text: "~"; color: mainWindow.themeMuted }
+                Button {
+                    id: searchCalendarSecond
+                    property date currentDate : new Date()
+                    text: qsTr(`${currentDate.getFullYear()}-${currentDate.getMonth()+1}-${currentDate.getDate()}`)
+                    onClicked: scalendarPopup2.open()
+                    background: Rectangle { color: parent.hovered ? "#f1f5f9" : mainWindow.themeCard; radius: mainWindow.radiusSm; border.color: mainWindow.themeBorder; border.width: 1 }
+                }
 
-                Rectangle { width: 1; height: 20; color: "#ccc" }
+                Rectangle { width: 1; height: 22; color: mainWindow.themeBorder }
 
-                Button { id: searchMaeip; property bool mae: true; text: qsTr(searchMaeip.mae ? "매입" : "매출"); onClicked: searchMaeip.mae = !searchMaeip.mae }
+                Button {
+                    id: searchMaeip
+                    property bool mae: true
+                    text: qsTr(searchMaeip.mae ? "매입" : "매출")
+                    onClicked: searchMaeip.mae = !searchMaeip.mae
+                    font.bold: true
+                    background: Rectangle {
+                        color: searchMaeip.mae ? "#dbeafe" : "#fee2e2"
+                        radius: mainWindow.radiusSm
+                        border.color: searchMaeip.mae ? "#93c5fd" : "#fecaca"
+                        border.width: 1
+                    }
+                }
 
                 // 검색용 콤보박스 (사용자 디자인 복원 + Layout 적용)
                 ComboBox {
@@ -892,8 +1090,8 @@ ApplicationWindow {
 
                 Button {
                     id: searchRecord
-                    text: qsTr("🔍 검색")
-                    highlighted: true
+                    text: qsTr("검색")
+                    font.bold: true
                     onClicked: {
                         mainWindow.searchedMae = searchMaeip.mae
                         if(sqlData.readRecordRange(searchCalendarFirst.currentDate, searchCalendarSecond.currentDate, searchMaeip.mae, searchSupplierComboBox.currentText, searchProductComboBox.currentText)) {
@@ -965,18 +1163,35 @@ ApplicationWindow {
                             searchFailed.open();
                         }
                     }
+                    background: Rectangle {
+                        color: parent.pressed ? mainWindow.themePrimaryHover : (parent.hovered ? mainWindow.themePrimaryHover : mainWindow.themePrimary)
+                        radius: mainWindow.radiusSm
+                    }
+                    contentItem: Text { text: searchRecord.text; color: "white"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; font: searchRecord.font }
                 }
-                Button { id: addIpgeumRecord; text: qsTr("💰 일괄입금처리");
+                Button {
+                    id: addIpgeumRecord
+                    text: qsTr("일괄입금처리")
                     onClicked: ilgwalipgeumPopup.open()
+                    background: Rectangle { color: parent.hovered ? "#f1f5f9" : mainWindow.themeCard; radius: mainWindow.radiusSm; border.color: mainWindow.themeBorder; border.width: 1 }
                 }
-
-                Button { id: adjIpgeumRecord; text: qsTr("입금수정");
+                Button {
+                    id: adjIpgeumRecord
+                    text: qsTr("입금수정")
                     onClicked: searchResultList.searchClicked ? ipgeumPopup.open() : noSelected.open()
+                    background: Rectangle { color: parent.hovered ? "#f1f5f9" : mainWindow.themeCard; radius: mainWindow.radiusSm; border.color: mainWindow.themeBorder; border.width: 1 }
                 }
                 Button {
                     id: deleteRecordButton
-                    text: qsTr("❌ 항목 삭제")
+                    text: qsTr("항목 삭제")
                     onClicked: searchResultList.searchClicked ? deleteAskPopup.open() : noSelected.open()
+                    background: Rectangle {
+                        color: parent.hovered ? mainWindow.themeDangerBg : mainWindow.themeCard
+                        radius: mainWindow.radiusSm
+                        border.color: parent.hovered ? mainWindow.themeDanger : mainWindow.themeBorder
+                        border.width: 1
+                    }
+                    contentItem: Text { text: deleteRecordButton.text; color: mainWindow.themeDanger; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; font: deleteRecordButton.font }
                 }
             }
         }
@@ -987,48 +1202,50 @@ ApplicationWindow {
         Rectangle {
             id: searchSum
             Layout.fillWidth: true
-            Layout.preferredHeight: 60
-            color: "#E8F5E9"
-            border.color: "#A5D6A7"
-            radius: 5
+            Layout.preferredHeight: 64
+            color: mainWindow.themeSuccessBg
+            border.color: "#a7f3d0"
+            border.width: 1
+            radius: mainWindow.radiusMd
 
             RowLayout {
                 anchors.fill: parent
-                anchors.margins: 15
-                spacing: 30
+                anchors.margins: 16
+                spacing: 28
 
                 component SummaryItem: ColumnLayout {
                     property string title
                     property string value
-                    property color valColor: "black"
-                    spacing: 5
-                    Text { text: title; font.pixelSize: 12; color: "#555" }
-                    Text { text: value; font.pixelSize: 16; font.bold: true; color: valColor }
+                    property color valColor: "#0f172a"
+                    spacing: 4
+                    Text { text: title; font.pixelSize: 11; color: mainWindow.themeMuted; font.weight: Font.Medium }
+                    Text { text: value; font.pixelSize: 15; font.bold: true; color: valColor }
                 }
 
                 SummaryItem { title: "검색 건수"; value: mainWindow.gaesoo + " 건" }
                 SummaryItem { title: "총 수량"; value: mainWindow.amountSum.toLocaleString(Qt.locale(), 'f', 0) }
-                Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: "#ccc" }
-                SummaryItem { title: "총 공급가액"; value: mainWindow.gonggaSum.toLocaleString(Qt.locale(), 'f', 0); valColor: "blue" }
+                Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: mainWindow.themeBorder }
+                SummaryItem { title: "총 공급가액"; value: mainWindow.gonggaSum.toLocaleString(Qt.locale(), 'f', 0); valColor: mainWindow.themePrimary }
                 SummaryItem { title: "총 부가세"; value: mainWindow.bugaSum.toLocaleString(Qt.locale(), 'f', 0) }
-                SummaryItem { title: "총 합계금액"; value: mainWindow.hapgyeSum.toLocaleString(Qt.locale(), 'f', 0); valColor: "blue" }
-                Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: "#ccc" }
+                SummaryItem { title: "총 합계금액"; value: mainWindow.hapgyeSum.toLocaleString(Qt.locale(), 'f', 0); valColor: mainWindow.themePrimary }
+                Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: mainWindow.themeBorder }
                 SummaryItem { title: "총 입금액"; value: mainWindow.ipamountSum.toLocaleString(Qt.locale(), 'f', 0) }
-                SummaryItem { title: `총 미${mainWindow.searchedMae ? "지급" : "수금"}액`; value: mainWindow.searchedMae ? mainWindow.mijiSum.toLocaleString(Qt.locale(), 'f', 0) : mainWindow.misuSum.toLocaleString(Qt.locale(), 'f', 0); valColor: "blue" }
+                SummaryItem { title: `총 미${mainWindow.searchedMae ? "지급" : "수금"}액`; value: mainWindow.searchedMae ? mainWindow.mijiSum.toLocaleString(Qt.locale(), 'f', 0) : mainWindow.misuSum.toLocaleString(Qt.locale(), 'f', 0); valColor: mainWindow.themePrimary }
                 Item { Layout.fillWidth: true }
             }
         }
 
         // ==================================================================
-        // 4. 리스트 영역 (ListView Area) - 디자인 및 스크롤바 수정
+        // 4. 리스트 영역 (ListView Area)
         // ==================================================================
         Rectangle {
             id: searchResult
             Layout.fillWidth: true
             Layout.fillHeight: true
-            color: "white"
-            border.color: "#ccc"
-            radius: 2
+            color: mainWindow.themeCard
+            border.color: mainWindow.themeBorder
+            border.width: 1
+            radius: mainWindow.radiusMd
             clip: true
 
             ColumnLayout {
@@ -1038,52 +1255,52 @@ ApplicationWindow {
                 // [4-1] 헤더 (Header)
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 35
-                    color: "#f0f0f0"
-                    border.color: "#ddd"
+                    Layout.preferredHeight: 38
+                    color: "#f8fafc"
+                    border.color: mainWindow.themeBorder
                     border.width: 1
 
                     RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 5; anchors.rightMargin: 5
+                        anchors.leftMargin: 8; anchors.rightMargin: 8
                         spacing: 0
 
                         component HeaderText: Text {
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
                             font.bold: true
-                            font.pixelSize: 13
-                            color: "#333"
+                            font.pixelSize: 12
+                            color: mainWindow.themeMuted
                         }
 
-                        HeaderText { text: "구분"; Layout.preferredWidth: 50 }
-                        Rectangle { width: 1; height: 20; color: "#ddd" }
-                        HeaderText { text: "일자"; Layout.preferredWidth: 90 }
-                        Rectangle { width: 1; height: 20; color: "#ddd" }
-                        HeaderText { text: "거래처"; Layout.fillWidth: true; Layout.minimumWidth: 100 }
-                        Rectangle { width: 1; height: 20; color: "#ddd" }
-                        HeaderText { text: "품명"; Layout.fillWidth: true; Layout.minimumWidth: 100 }
-                        Rectangle { width: 1; height: 20; color: "#ddd" }
-                        HeaderText { text: "규격"; Layout.preferredWidth: 60 }
-                        Rectangle { width: 1; height: 20; color: "#ddd" }
-                        HeaderText { text: "단가"; Layout.preferredWidth: 70 }
-                        Rectangle { width: 1; height: 20; color: "#ddd" }
-                        HeaderText { text: "수량"; Layout.preferredWidth: 50 }
-                        Rectangle { width: 1; height: 20; color: "#ddd" }
-                        HeaderText { text: "공급가"; Layout.preferredWidth: 80 }
-                        Rectangle { width: 1; height: 20; color: "#ddd" }
-                        HeaderText { text: "부가세"; Layout.preferredWidth: 70 }
-                        Rectangle { width: 1; height: 20; color: "#ddd" }
-                        HeaderText { text: "합계"; Layout.preferredWidth: 80 }
-                        Rectangle { width: 1; height: 20; color: "#ddd" }
-                        HeaderText { text: "최근입금일"; Layout.preferredWidth: 90 }
-                        Rectangle { width: 1; height: 20; color: "#ddd" }
-                        HeaderText { text: "누적입금액"; Layout.preferredWidth: 70 }
-                        Rectangle { width: 1; height: 20; color: "#ddd" }
-                        HeaderText { text: `미${mainWindow.searchedMae ? "지급" : "수금"}액`; Layout.preferredWidth: 70 }
+                        HeaderText { text: "구분"; Layout.preferredWidth: 52 }
+                        Rectangle { width: 1; height: 22; color: mainWindow.themeBorder }
+                        HeaderText { text: "일자"; Layout.preferredWidth: 88 }
+                        Rectangle { width: 1; height: 22; color: mainWindow.themeBorder }
+                        HeaderText { text: "거래처"; Layout.preferredWidth: 180 }
+                        Rectangle { width: 1; height: 22; color: mainWindow.themeBorder }
+                        HeaderText { text: "품명"; Layout.preferredWidth: 240 }
+                        Rectangle { width: 1; height: 22; color: mainWindow.themeBorder }
+                        HeaderText { text: "규격"; Layout.preferredWidth: 58 }
+                        Rectangle { width: 1; height: 22; color: mainWindow.themeBorder }
+                        HeaderText { text: "단가"; Layout.preferredWidth: 68 }
+                        Rectangle { width: 1; height: 22; color: mainWindow.themeBorder }
+                        HeaderText { text: "수량"; Layout.preferredWidth: 48 }
+                        Rectangle { width: 1; height: 22; color: mainWindow.themeBorder }
+                        HeaderText { text: "공급가"; Layout.preferredWidth: 78 }
+                        Rectangle { width: 1; height: 22; color: mainWindow.themeBorder }
+                        HeaderText { text: "부가세"; Layout.preferredWidth: 68 }
+                        Rectangle { width: 1; height: 22; color: mainWindow.themeBorder }
+                        HeaderText { text: "합계"; Layout.preferredWidth: 78 }
+                        Rectangle { width: 1; height: 22; color: mainWindow.themeBorder }
+                        HeaderText { text: "최근입금일"; Layout.preferredWidth: 88 }
+                        Rectangle { width: 1; height: 22; color: mainWindow.themeBorder }
+                        HeaderText { text: "누적입금액"; Layout.preferredWidth: 78 }
+                        Rectangle { width: 1; height: 22; color: mainWindow.themeBorder }
+                        HeaderText { text: `미${mainWindow.searchedMae ? "지급" : "수금"}액`; Layout.preferredWidth: 72 }
 
-                        // 🌟 스크롤바 가림 방지용 빈 공간 (Spacer) 추가
-                        Item { Layout.preferredWidth: 20 }
+                        Item { Layout.fillWidth: true }
+                        Item { Layout.preferredWidth: 18 }
                     }
                 }
 
@@ -1104,12 +1321,11 @@ ApplicationWindow {
                         width: parent.width
                         height: 30
 
-                        // 🌟 요청 사항 반영: 파란 아웃라인 제거 -> 배경색 변경 (연한 파란색)
                         color: {
                             if (searchResultList.selectedRow === modelData.id && searchResultList.searchClicked) {
-                                return "#E3F2FD" // 선택 시: 눈이 편안한 연한 하늘색
+                                return "#eff6ff"
                             }
-                            return index % 2 === 0 ? "#ffffff" : "#f9f9f9" // 기본: 흰색/회색 교차
+                            return index % 2 === 0 ? mainWindow.themeCard : "#f8fafc"
                         }
 
                         MouseArea {
@@ -1177,26 +1393,25 @@ ApplicationWindow {
 
                             }
 
-                            ListText { text: modelData.gb; Layout.preferredWidth: 50; horizontalAlignment: Text.AlignHCenter; color: text==="매입"?"red":"blue" }
-                            ListText { text: modelData.date; Layout.preferredWidth: 90; horizontalAlignment: Text.AlignHCenter }
-                            ListText { text: modelData.supplier; Layout.fillWidth: true; Layout.minimumWidth: 100 }
-                            ListText { text: modelData.product; Layout.fillWidth: true; Layout.minimumWidth: 100 }
-                            ListText { text: modelData.size; Layout.preferredWidth: 60; horizontalAlignment: Text.AlignHCenter }
+                            ListText { text: modelData.gb; Layout.preferredWidth: 52; horizontalAlignment: Text.AlignHCenter; color: text==="매입"?"red":"blue" }
+                            ListText { text: modelData.date; Layout.preferredWidth: 88; horizontalAlignment: Text.AlignHCenter }
+                            ListText { text: modelData.supplier; Layout.preferredWidth: 182 }
+                            ListText { text: modelData.product; Layout.preferredWidth: 250 }
+                            ListText { text: modelData.size; Layout.preferredWidth: 58; horizontalAlignment: Text.AlignHCenter }
 
-                            NumText { text: parseInt(modelData.price).toLocaleString(Qt.locale(),'f',0); Layout.preferredWidth: 70 }
-                            NumText { text: modelData.quantity; Layout.preferredWidth: 50 }
-                            NumText { text: parseInt(modelData.gongga).toLocaleString(Qt.locale(),'f',0); Layout.preferredWidth: 80 }
-                            NumText { text: parseInt(modelData.buga).toLocaleString(Qt.locale(),'f',0); Layout.preferredWidth: 70 }
-                            NumText { text: parseInt(modelData.hapgye).toLocaleString(Qt.locale(),'f',0); Layout.preferredWidth: 80; font.bold: true }
-                            ListText { text: resultRowLayout.latestDate !== "" ? resultRowLayout.latestDate : "-"; Layout.preferredWidth: 90; horizontalAlignment: Text.AlignHCenter }
-                            NumText { text: resultRowLayout.safeInt(modelData.ipA1 + modelData.ipA2 + modelData.ipA3).toLocaleString(Qt.locale(),'f',0); Layout.preferredWidth: 70; color: "blue" }
-                            NumText { text: mainWindow.searchedMae? resultRowLayout.safeInt(modelData.miji).toLocaleString(Qt.locale(),'f',0) : resultRowLayout.safeInt(modelData.misu).toLocaleString(Qt.locale(),'f',0); Layout.preferredWidth: 70; color: modelData.misu > 0 ? "red" : "black" }
+                            NumText { text: parseInt(modelData.price).toLocaleString(Qt.locale(),'f',0); Layout.preferredWidth: 68 }
+                            NumText { text: modelData.quantity; Layout.preferredWidth: 48 }
+                            NumText { text: parseInt(modelData.gongga).toLocaleString(Qt.locale(),'f',0); Layout.preferredWidth: 78 }
+                            NumText { text: parseInt(modelData.buga).toLocaleString(Qt.locale(),'f',0); Layout.preferredWidth: 68 }
+                            NumText { text: parseInt(modelData.hapgye).toLocaleString(Qt.locale(),'f',0); Layout.preferredWidth: 78; font.bold: true }
+                            ListText { text: resultRowLayout.latestDate !== "" ? resultRowLayout.latestDate : "-"; Layout.preferredWidth: 88; horizontalAlignment: Text.AlignHCenter }
+                            NumText { text: resultRowLayout.safeInt(modelData.ipA1 + modelData.ipA2 + modelData.ipA3).toLocaleString(Qt.locale(),'f',0); Layout.preferredWidth: 78; color: "blue" }
+                            NumText { text: mainWindow.searchedMae? resultRowLayout.safeInt(modelData.miji).toLocaleString(Qt.locale(),'f',0) : resultRowLayout.safeInt(modelData.misu).toLocaleString(Qt.locale(),'f',0); Layout.preferredWidth: 72; color: modelData.misu > 0 ? "red" : "black" }
 
-                            // 🌟 스크롤바 가림 방지용 빈 공간 (데이터 행에도 추가)
-                            Item { Layout.preferredWidth: 20 }
+                            Item { Layout.fillWidth: true }
+                            Item { Layout.preferredWidth: 18 }
                         }
-                        // 하단 구분선
-                        Rectangle { width: parent.width; height: 1; color: "#eee"; anchors.bottom: parent.bottom }
+                        Rectangle { width: parent.width; height: 1; color: mainWindow.themeBorder; anchors.bottom: parent.bottom }
                     }
                 }
             }

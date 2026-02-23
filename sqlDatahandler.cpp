@@ -257,10 +257,10 @@ bool SqlHandler::readRecordRange(const QVariant &startDate, const QVariant &endD
     QString queryStr;
     queryStr = QString("SELECT * FROM records WHERE tr_date BETWEEN '%1' and '%2' AND gubun = '%3'").arg(startDate.toString(), endDate.toString(), gubun);
     if(supplier != "전체") {
-        queryStr += QString("AND customer = '%1'").arg(supplier.toString());
+        queryStr += QString(" AND customer = '%1'").arg(supplier.toString());
     }
     if(product != "전체") {
-        queryStr += QString("AND item = '%1'").arg(product.toString());
+        queryStr += QString(" AND item = '%1'").arg(product.toString());
     }
     queryStr += QString(" ORDER BY tr_date ASC");
     query.exec(queryStr);
@@ -306,10 +306,10 @@ void SqlHandler::calcSearchedSum(const QVariant &startDate, const QVariant &endD
     QString queryStr;
     queryStr = QString("SELECT SUM(amount), SUM(supply_val), SUM(tax_val), SUM(total_val), SUM(pay_amt1 + pay_amt2 + pay_amt3), SUM(unpaid_amt), SUM(receivable_amt) FROM records WHERE tr_date BETWEEN '%1' and '%2' AND gubun = '%3'").arg(startDate.toString(), endDate.toString(), gubun);
     if(supplier != "전체") {
-        queryStr += QString("AND customer = '%1'").arg(supplier.toString());
+        queryStr += QString(" AND customer = '%1'").arg(supplier.toString());
     }
     if(product != "전체") {
-        queryStr += QString("AND item = '%1'").arg(product.toString());
+        queryStr += QString(" AND item = '%1'").arg(product.toString());
     }
     query.exec(queryStr);
     if(query.exec(queryStr) && query.next()) {
@@ -322,6 +322,8 @@ void SqlHandler::calcSearchedSum(const QVariant &startDate, const QVariant &endD
         mijiSum = query.value(5).toInt();
         misuSum = query.value(6).toInt();
     }
+    ipamountSum = hapgyeSum.toInt() - mijiSum.toInt() - misuSum.toInt();
+    qDebug() << ipamountSum << "<< 이게 총 입금액";
 }
 
 void SqlHandler::monthTotalReady(const QVariant &year, const QVariant &gb, const QVariant &supplier, const QVariant &product) {

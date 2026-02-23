@@ -4,13 +4,20 @@ import QtQuick.Layouts
 
 Window {
     id: mtWindow
-    width: 680
-    height: 720
+    width: 700
+    height: 740
     visible: false
     title: "월별 통계"
 
     flags: Qt.Window | Qt.WindowTitleHint | Qt.WindowSystemMenuHint
          | Qt.WindowMinMaxButtonsHint | Qt.WindowCloseButtonHint
+
+    readonly property color mtBg: "#f4f6f9"
+    readonly property color mtCard: "#ffffff"
+    readonly property color mtBorder: "#e2e6ea"
+    readonly property color mtPrimary: "#2563eb"
+    readonly property color mtMuted: "#64748b"
+    readonly property int mtRadius: 8
 
     // 0값 처리를 위한 포맷 함수 (값이 없거나 0이면 "0" 반환)
     function formatNum(val) {
@@ -20,7 +27,7 @@ Window {
     Rectangle {
         id: mtroot
         anchors.fill: parent
-        color: "#f0f2f5" // 전체 배경색 (연한 회색톤으로 깔끔하게)
+        color: mtWindow.mtBg
 
         property var mtModel: [];
         property var mtBungi: [];
@@ -32,20 +39,20 @@ Window {
         component ExcelCell: Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            color: "#ffffff"     // 기본 셀 배경색
-            border.color: "#bdc3c7" // 테두리 색상 (연한 회색)
+            color: mtWindow.mtCard
+            border.color: mtWindow.mtBorder
             border.width: 1
 
             property alias text: label.text
             property alias textColor: label.color
             property alias fontBold: label.font.bold
-            property string align: "right" // 기본 정렬 우측
+            property string align: "right"
 
             Text {
                 id: label
                 anchors.fill: parent
-                anchors.rightMargin: 5
-                anchors.leftMargin: 5
+                anchors.rightMargin: 6
+                anchors.leftMargin: 6
                 verticalAlignment: Text.AlignVCenter
                 horizontalAlignment: parent.align === "center" ? Text.AlignHCenter : Text.AlignRight
                 font.pixelSize: 12
@@ -55,26 +62,24 @@ Window {
 
         ColumnLayout {
             anchors.fill: parent
-            anchors.margins: 15
-            spacing: 10
+            anchors.margins: 16
+            spacing: 12
 
-            // =========================================================
-            // [검색 조건 영역] - 엑셀 상단 제어바 느낌
-            // =========================================================
+            // [검색 조건 영역]
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 50
-                color: "#E3F2FD" // 이미지의 상단 민트/베이지 느낌을 살짝 준 배경 (원하면 흰색으로 변경 가능)
-                border.color: "#bdc3c7"
-                radius: 5
+                Layout.preferredHeight: 54
+                color: mtWindow.mtCard
+                border.color: mtWindow.mtBorder
+                border.width: 1
+                radius: mtWindow.mtRadius
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.margins: 10
-                    spacing: 10
+                    anchors.margins: 12
+                    spacing: 12
 
-                    // 라벨 추가하여 이미지와 비슷하게 구성 (원치 않으면 Text 부분 삭제)
-                    Text { text: "연도"; font.bold: true }
+                    Text { text: "연도"; font.bold: true; font.pixelSize: 12; color: mtWindow.mtMuted }
                     ComboBox {
                         id: mtYearComboBox
                         Layout.preferredWidth: 80
@@ -97,7 +102,7 @@ Window {
                         }
                     }
 
-                    Text { text: "구분"; font.bold: true }
+                    Text { text: "구분"; font.bold: true; font.pixelSize: 12; color: mtWindow.mtMuted }
                     ComboBox {
                         id: mtGBComboBox
                         Layout.preferredWidth: 70
@@ -120,7 +125,7 @@ Window {
                         }
                     }
 
-                    Text { text: "거래처/상품"; font.bold: true }
+                    Text { text: "거래처/상품"; font.bold: true; font.pixelSize: 12; color: mtWindow.mtMuted }
                     ComboBox {
                         id: mtSupplierComboBox
                         Layout.preferredWidth: 120
@@ -169,8 +174,8 @@ Window {
                     Button {
                         id: mtButton
                         text: qsTr("검색")
-                        Layout.preferredHeight: 25
-                        // (기존 클릭 로직 그대로 유지)
+                        Layout.preferredHeight: 28
+                        font.bold: true
                         onClicked: {
                             if(mtGBComboBox.currentText === "매입") {
                                 mtroot.mtGB = true;
@@ -277,23 +282,24 @@ Window {
                             // mtroot.mtBungi = tbun;
                             // mtroot.mtBangi = tban;
                         }
+                        background: Rectangle {
+                            color: parent.pressed ? "#1d4ed8" : (parent.hovered ? "#1d4ed8" : mtWindow.mtPrimary)
+                            radius: 6
+                        }
+                        contentItem: Text { text: mtButton.text; color: "white"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; font: mtButton.font }
                     }
                 }
             }
 
-            // =========================================================
             // [데이터 테이블 영역]
-            // =========================================================
-
-            // 헤더 (컬럼명)
             RowLayout {
-                spacing: -1 // 테두리 겹치게 하여 이중선 방지
+                spacing: -1
                 Layout.fillWidth: true
-                Layout.preferredHeight: 30
+                Layout.preferredHeight: 34
 
-                // 헤더용 스타일 (배경색 베이지/살구색)
                 component HeaderCell: ExcelCell {
-                    color: "#E8F5E9" // 이미지의 베이지색 헤더 느낌
+                    color: "#f0fdf4"
+                    border.color: mtWindow.mtBorder
                     align: "center"
                     fontBold: true
                 }
@@ -320,7 +326,7 @@ Window {
                     height: 25
                     spacing: -1
 
-                    ExcelCell { text: (index + 1) + "월"; Layout.preferredWidth: 80; align: "center"; color: "#f9fbe7" } // 월 컬럼 약간 다른 색
+                    ExcelCell { text: (index + 1) + "월"; Layout.preferredWidth: 80; align: "center"; color: "#f8fafc" }
                     ExcelCell { text: formatNum(modelData.amount); Layout.preferredWidth: 80 }
                     ExcelCell { text: formatNum(modelData.gongga); Layout.preferredWidth: 130 }
                     ExcelCell { text: formatNum(modelData.buga); Layout.preferredWidth: 100 }
@@ -346,7 +352,7 @@ Window {
                     height: 25
                     spacing: -1
 
-                    ExcelCell { text: (index + 1) + "/4분기"; Layout.preferredWidth: 80; align: "center"; color: "#e0f2f1" } // 분기 컬럼 색상
+                    ExcelCell { text: (index + 1) + "/4분기"; Layout.preferredWidth: 80; align: "center"; color: "#f0f9ff" }
                     ExcelCell { text: formatNum(modelData.amount); Layout.preferredWidth: 80 }
                     ExcelCell { text: formatNum(modelData.gongga); Layout.preferredWidth: 130 }
                     ExcelCell { text: formatNum(modelData.buga); Layout.preferredWidth: 100 }
@@ -376,7 +382,7 @@ Window {
                         text: modelData.gb;
                         Layout.preferredWidth: 80;
                         align: "center";
-                        color: "#e1f5fe"; // 반기 컬럼 색상
+                        color: "#eff6ff";
                         fontBold: true
                     }
                     ExcelCell { text: formatNum(modelData.amount); Layout.preferredWidth: 80; fontBold: true }
@@ -387,11 +393,10 @@ Window {
                 }
             }
 
-            // 하단 안내 문구
             Text {
-                Layout.topMargin: 5
+                Layout.topMargin: 8
                 text: "* 수량, 공급가액, 부가세액, 합계금액, 미지급액/미수금액은 거래일을 기준으로 산정됩니다."
-                color: "red"
+                color: mtWindow.mtMuted
                 font.pixelSize: 11
             }
 

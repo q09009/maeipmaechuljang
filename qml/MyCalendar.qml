@@ -5,18 +5,22 @@ import QtQuick.Layouts
 Rectangle {
     id: root
     width: 270
-    // 헤더가 한 줄로 줄었으므로 높이를 다시 조정합니다.
     height: 300
-    color: "white"
-    radius: 5
-    border.color: "#ddd"
+    color: "#ffffff"
+    radius: 8
+    border.color: "#e2e6ea"
+    border.width: 1
+
+    readonly property color calPrimary: "#2563eb"
+    readonly property color calMuted: "#64748b"
+    readonly property color calBorder: "#e2e6ea"
+    readonly property color calHover: "#f1f5f9"
 
     property date selectedDate: new Date()
     property int year: selectedDate.getFullYear()
     property int month: selectedDate.getMonth() + 1
     property int calendarParent
 
-    // 내부 로직용 함수
     function changeMonth(step) {
         var newDate = new Date(year, month - 1 + step, 1)
         year = newDate.getFullYear()
@@ -25,70 +29,75 @@ Rectangle {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 10
-        spacing: 5
+        anchors.margins: 12
+        spacing: 8
 
-        // ==================================================================
-        // 1. 헤더 (연도 + 월 + 닫기 버튼을 한 줄에 배치)
-        // ==================================================================
+        // 헤더 (연도 + 월 + 닫기)
         RowLayout {
             Layout.fillWidth: true
-            spacing: 5
+            spacing: 4
 
-            // --- 연도 섹션 ---
             Button {
                 text: "◀"
-                Layout.preferredWidth: 25; Layout.preferredHeight: 30
+                Layout.preferredWidth: 28
+                Layout.preferredHeight: 28
                 flat: true
                 onClicked: root.year--
-                background: Rectangle { color: parent.down ? "#eee" : "transparent"; radius: 15 }
+                contentItem: Text { text: parent.text; font.pixelSize: 14; color: root.calMuted; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                background: Rectangle { color: parent.hovered ? root.calHover : "transparent"; radius: 6 }
             }
             Text {
                 text: qsTr("%1년").arg(root.year)
-                font.bold: true; font.pixelSize: 15; color: "#333"
-                Layout.preferredWidth: 45 // 너비 고정
+                font.bold: true
+                font.pixelSize: 14
+                color: root.calMuted
+                Layout.preferredWidth: 44
                 horizontalAlignment: Text.AlignHCenter
             }
             Button {
                 text: "▶"
-                Layout.preferredWidth: 25; Layout.preferredHeight: 30
+                Layout.preferredWidth: 28
+                Layout.preferredHeight: 28
                 flat: true
                 onClicked: root.year++
-                background: Rectangle { color: parent.down ? "#eee" : "transparent"; radius: 15 }
+                contentItem: Text { text: parent.text; font.pixelSize: 14; color: root.calMuted; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                background: Rectangle { color: parent.hovered ? root.calHover : "transparent"; radius: 6 }
             }
 
-            // --- 중앙 여백 ---
             Item { Layout.fillWidth: true }
 
-            // --- 월 섹션 ---
             Button {
                 text: "‹"
-                Layout.preferredWidth: 25; Layout.preferredHeight: 30
+                Layout.preferredWidth: 28
+                Layout.preferredHeight: 28
                 flat: true
                 onClicked: changeMonth(-1)
-                contentItem: Text { text: parent.text; font.pixelSize: 20; color: "#1976D2"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                background: Rectangle { color: parent.down ? "#eee" : "transparent"; radius: 15 }
+                contentItem: Text { text: parent.text; font.pixelSize: 18; color: root.calPrimary; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                background: Rectangle { color: parent.hovered ? root.calHover : "transparent"; radius: 6 }
             }
             Text {
                 text: qsTr("%1월").arg(root.month)
-                font.bold: true; font.pixelSize: 15; color: "#1976D2"
-                Layout.preferredWidth: 35 // 너비 고정
+                font.bold: true
+                font.pixelSize: 14
+                color: root.calPrimary
+                Layout.preferredWidth: 32
                 horizontalAlignment: Text.AlignHCenter
             }
             Button {
                 text: "›"
-                Layout.preferredWidth: 25; Layout.preferredHeight: 30
+                Layout.preferredWidth: 28
+                Layout.preferredHeight: 28
                 flat: true
                 onClicked: changeMonth(1)
-                contentItem: Text { text: parent.text; font.pixelSize: 20; color: "#1976D2"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                background: Rectangle { color: parent.down ? "#eee" : "transparent"; radius: 15 }
+                contentItem: Text { text: parent.text; font.pixelSize: 18; color: root.calPrimary; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                background: Rectangle { color: parent.hovered ? root.calHover : "transparent"; radius: 6 }
             }
 
-            // --- 닫기 버튼 ---
-            Item { Layout.preferredWidth: 5 } // 여백
+            Item { Layout.preferredWidth: 4 }
             Button {
                 text: "✕"
-                Layout.preferredWidth: 25; Layout.preferredHeight: 30
+                Layout.preferredWidth: 28
+                Layout.preferredHeight: 28
                 flat: true
                 onClicked: {
                     if(calendarParent === 0) calendarPopup.close()
@@ -96,32 +105,33 @@ Rectangle {
                     else if(calendarParent === 2) scalendarPopup2.close()
                 }
                 contentItem: Text {
-                    text: parent.text; color: "#888"; font.bold: true
-                    horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
+                    text: parent.text
+                    color: root.calMuted
+                    font.pixelSize: 14
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
                 }
-                background: Rectangle { color: parent.down ? "#ffebee" : "transparent"; radius: 15 }
+                background: Rectangle { color: parent.hovered ? "#fef2f2" : "transparent"; radius: 6 }
             }
         }
 
-        Rectangle { Layout.fillWidth: true; height: 1; color: "#eee" } // 구분선
+        Rectangle { Layout.fillWidth: true; height: 1; color: root.calBorder }
 
-        // ==================================================================
-        // 2. 요일 헤더
-        // ==================================================================
+        // 요일 헤더
         DayOfWeekRow {
             Layout.fillWidth: true
             locale: Qt.locale("ko_KR")
             delegate: Text {
                 text: model.shortName
-                font.bold: true; font.pixelSize: 13
-                color: model.index === 0 ? "red" : (model.index === 6 ? "blue" : "#666")
-                horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
+                font.bold: true
+                font.pixelSize: 12
+                color: model.index === 0 ? "#dc2626" : (model.index === 6 ? root.calPrimary : root.calMuted)
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
             }
         }
 
-        // ==================================================================
-        // 3. 날짜 그리드
-        // ==================================================================
+        // 날짜 그리드
         MonthGrid {
             id: grid
             Layout.fillWidth: true
@@ -136,25 +146,25 @@ Rectangle {
                 property bool isSelected: model.date.toDateString() === root.selectedDate.toDateString()
                 property bool isToday: model.date.toDateString() === new Date().toDateString()
 
-                opacity: isCurrentMonth ? 1.0 : 0.3
-                color: isSelected ? "#1976D2" : "transparent"
+                opacity: isCurrentMonth ? 1.0 : 0.35
+                color: isSelected ? root.calPrimary : "transparent"
                 radius: width / 2
-                border.color: !isSelected && isToday ? "#1976D2" : "transparent"
-                border.width: 1
+                border.color: !isSelected && isToday ? root.calPrimary : "transparent"
+                border.width: 1.5
 
                 Text {
                     anchors.centerIn: parent
                     text: model.date.getDate()
-                    color: isSelected ? "white" : "#333"
+                    color: isSelected ? "white" : "#334155"
+                    font.pixelSize: 13
                     font.bold: isSelected || isToday
                 }
 
                 MouseArea {
                     anchors.fill: parent
+                    hoverEnabled: true
                     onClicked: {
                         root.selectedDate = model.date
-
-                        // 데이터 갱신만 하고 팝업은 닫지 않음
                         if(calendarParent === 0) calendarButton.currentDate = model.date
                         else if(calendarParent === 1) searchCalendarFirst.currentDate = model.date
                         else if(calendarParent === 2) searchCalendarSecond.currentDate = model.date
