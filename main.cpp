@@ -7,6 +7,7 @@
 #include "sqlDatahandler.h"
 #include "syncManager.h"
 
+
 #include <QList>
 
 #include "xlsxdocument.h"

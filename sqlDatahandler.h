@@ -8,6 +8,7 @@
 #include <QStandardPaths>
 
 
+
 class SqlHandler : public QObject {
     Q_OBJECT
 public:
@@ -45,6 +46,9 @@ public:
 
     // record파일에 작성(입금일, 입금액) 3개
     Q_INVOKABLE void writeRecordIp(const QVariant &date1, const QVariant &amount1, const QVariant &date2, const QVariant &amount2, const QVariant &date3, const QVariant &amount3, const QVariant &row);
+
+    // 일괄 입금처리에 사용될 함수, searchedResult에서 값 읽어서 추가만 해주자
+    Q_INVOKABLE void writeRecordIlgwalIpgeum(const QVariant &date, const QVariant &amount);
 
     // record파일에서 불러옴
     Q_INVOKABLE bool readRecordRange(const QVariant &startDate, const QVariant &endDate, bool mae, const QVariant &supplier, const QVariant &product);
@@ -89,6 +93,7 @@ private:
     // C++ 내부에서 사용할 리스트 변수들
     QVariantList dataName;
     QVariantList dataProduct;
+    QList<int> dataBalance;
 
     //검색결과들
     QVariantList searchedResult;

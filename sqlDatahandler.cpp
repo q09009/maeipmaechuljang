@@ -1,5 +1,5 @@
 #include "sqlDatahandler.h"
-#include "excelDatahandler.h"
+//#include "excelDatahandler.h"
 #include <QSqlError>
 #include <QDebug>
 #include <QSqlDatabase>
@@ -54,7 +54,8 @@ void SqlHandler::initDB() {
         QString createCustomerTable = R"(
             CREATE TABLE IF NOT EXISTS customer (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT UNIQUE  -- 중복 방지를 위해 UNIQUE 추가하면 좋습니다
+                name TEXT UNIQUE,  -- 중복 방지를 위해 UNIQUE 추가하면 좋습니다
+                balance INTEGER DEFAULT 0
             );
         )";
         if (!query.exec(createCustomerTable)) {
@@ -112,8 +113,8 @@ void SqlHandler::syncExcelToSql(const QList<QStringList>& dataList) {
         for (int i = 0; i < 16; ++i) {
             QString val = row.at(i);
 
-            // 숫자가 들어가야 할 칸(6번 인덱스부터 끝까지)이 "0"이거나 비었으면 NULL 처리
-            if ((i >= 5) && (val.isEmpty() || val == "0")) {
+            // 숫자가 들어가야 할 칸(6번 인덱스부터 끝까지)이 비었으면 NULL 처리
+            if ((i >= 5) && (val.isEmpty())) {
                 query.addBindValue(QVariant(QMetaType(QMetaType::Double)));
             } else {
                 query.addBindValue(val);
@@ -179,16 +180,18 @@ void SqlHandler::initData() {
     if(!m_db.isOpen()) return;
 
     QSqlQuery query(m_db);
-    query.exec("SELECT name FROM customer");
+    query.exec("SELECT * FROM customer ORDER BY name ASC");
 
     while (query.next()) {
         // 맵(딕셔너리) 구조로 만들어서 담기
         QVariant var;
-        var = query.value("name").toString();
+        var = query.value(1).toString();
         dataName.append(var);
+        int bal = query.value(2).toInt();
+        dataBalance.append(bal);
     }
 
-    query.exec("SELECT * FROM item");
+    query.exec("SELECT * FROM item ORDER BY item_name ASC");
 
     while (query.next()) {
         QVariantMap map;
@@ -206,18 +209,21 @@ void SqlHandler::refreshData() {
 
     dataName.clear();
     dataProduct.clear();
+    dataBalance.clear();
 
     QSqlQuery query(m_db);
-    query.exec("SELECT name FROM customer");
+    query.exec("SELECT * FROM customer ORDER BY name ASC");
 
     while (query.next()) {
         // 맵(딕셔너리) 구조로 만들어서 담기
         QVariant var;
-        var = query.value("name").toString();
+        var = query.value(1).toString();
         dataName.append(var);
+        int bal = query.value(2).toInt();
+        dataBalance.append(bal);
     }
 
-    query.exec("SELECT * FROM item");
+    query.exec("SELECT * FROM item ORDER BY item_name ASC");
 
     while (query.next()) {
         QVariantMap map;
@@ -256,6 +262,7 @@ bool SqlHandler::readRecordRange(const QVariant &startDate, const QVariant &endD
     if(product != "전체") {
         queryStr += QString("AND item = '%1'").arg(product.toString());
     }
+    queryStr += QString(" ORDER BY tr_date ASC");
     query.exec(queryStr);
 
     while(query.next()) {
@@ -267,6 +274,7 @@ bool SqlHandler::readRecordRange(const QVariant &startDate, const QVariant &endD
         }
         searchedResult.append(map);
     }
+
     calcSearchedSum(startDate, endDate, mae, supplier, product);
     return true;
 }
@@ -612,6 +620,121 @@ QVariantList SqlHandler::readAllSqlCustomer() {
         }
     }
     return list;
+}
+
+void SqlHandler::writeRecordIlgwalIpgeum(const QVariant &date, const QVariant &amount) {
+    if (searchedResult.isEmpty()) return;
+
+    QList<int> idList;
+    QList<int> ipWhere;
+    QList<int> ipAmt;
+
+    QVariantMap test = searchedResult.at(0).toMap();
+    QString customerName = test["supplier"].toString();
+    bool isMae = (test["gb"].toString() == "매입");
+    QDate insertDate = date.toDate();
+
+    // 1. 기존 잔고(선수금/선지급금) 가져오기 및 초기화
+    int remainingAmt = amount.toInt();
+    for(int i = 0; i < dataName.size(); i++) {
+        if(dataName[i] == customerName) {
+            // 우리가 정한 규칙: (+)미수, (-)선수금
+            // 따라서 입금 처리할 때는 현재 잔고(balance)를 입금액에 '더해줘야' 전체 털 수 있는 돈이 나옵니다.
+            // (미수금이 100(+), 입금이 50이면 balance는 150이 됨 - 이걸로 털기 시작)
+            // (선수금이 50(-), 입금이 100이면 balance는 50이 됨 - 이걸로 털기 시작)
+            remainingAmt += dataBalance[i];
+            qDebug() << dataBalance[i];
+            break;
+        }
+    }
+    int customerId = -1;
+    QSqlQuery idQuery(m_db);
+    idQuery.prepare("SELECT id FROM customer WHERE name = :name");
+    idQuery.bindValue(":name", customerName);
+    if (idQuery.exec() && idQuery.next()) {
+        customerId = idQuery.value(0).toInt();
+    }
+
+    QSqlQuery query(m_db);
+    m_db.transaction(); // 데이터 안전을 위해 트랜잭션 시작!
+
+    // 중요: 잔고를 변수에 담았으니 DB의 잔고는 일단 0으로 초기화 (나중에 남은 돈만 다시 넣을 것임)
+    QString resetQuery = QString("UPDATE customer SET balance = 0 WHERE name = '%1'").arg(customerName);
+    query.exec(resetQuery);
+
+    // 2. 입금 대상 추출 루프 (검색된 결과 내에서 미수금이 있는 항목들)
+    for (const QVariant &item : searchedResult) {
+        QVariantMap map = item.toMap();
+        int targetAmt = (isMae ? map["miji"].toInt() : map["misu"].toInt());
+
+        if (targetAmt > 0) {
+            idList.append(map["id"].toInt());
+
+            // 빈 칸 찾기 로직 (1번 -> 2번 -> 3번(합산))
+            if (map["ipA1"].toInt() == 0) {
+                ipWhere.append(1);
+            } else if (map["ipA2"].toInt() == 0) {
+                ipWhere.append(2);
+            } else {
+                ipWhere.append(3);
+            }
+            ipAmt.append(targetAmt);
+        }
+    }
+
+    // 3. 실질적인 전표(records) 업데이트 루프
+    for (int i = 0; i < idList.size(); i++) {
+        if (remainingAmt <= 0) break; // 미수금 털 돈이 없으면 종료
+
+        int howMuch = ipAmt[i];
+        int ip = (remainingAmt >= howMuch) ? howMuch : remainingAmt;
+        remainingAmt -= ip;
+
+        QString dateStr = insertDate.toString("yyyy-MM-dd");
+        QString queryStr = "UPDATE records SET ";
+
+        if (ipWhere[i] == 1) {
+            queryStr += QString("pay_date1 = '%1', pay_amt1 = %2").arg(dateStr).arg(ip);
+        } else if (ipWhere[i] == 2) {
+            queryStr += QString("pay_date2 = '%1', pay_amt2 = %2").arg(dateStr).arg(ip);
+        } else {
+            // 3번 칸은 기존 금액에 누적
+            queryStr += QString("pay_date3 = '%1', pay_amt3 = IFNULL(pay_amt3, 0) + %2").arg(dateStr).arg(ip);
+        }
+
+        queryStr += QString(" WHERE id = %1").arg(idList[i]);
+        query.exec(queryStr);
+    }
+
+    // 1. 쿼리 실행 전 값 확인
+    qDebug() << "--- 최종 점검 ---";
+    qDebug() << "Target ID:" << customerId;
+    qDebug() << "Target Name:" << customerName;
+    qDebug() << "Remaining Amt:" << remainingAmt;
+
+    QSqlQuery finalQuery(m_db);
+    QString porm = (isMae ? "+" : "-");
+    QString customerQuery = QString("UPDATE customer SET balance = balance %3 %1 WHERE id = %2")
+                                .arg(remainingAmt).arg(customerId).arg(porm);
+
+    if (finalQuery.exec(customerQuery)) {
+        int affected = finalQuery.numRowsAffected();
+        qDebug() << "쿼리 성공! 바뀐 줄 수:" << affected;
+
+        // 만약 affected가 1인데 DB Browser에서 안 보인다면? 100% 파일 경로 문제입니다.
+        if(affected == 0) {
+            qDebug() << "주의: 업데이트는 성공했지만 실제 바뀐 데이터가 없음(ID가 틀렸을 수도!)";
+        }
+    } else {
+        qDebug() << "쿼리 실패 에러:" << finalQuery.lastError().text();
+    }
+
+    if (!m_db.commit()) {
+        qDebug() << "커밋 실패:" << m_db.lastError().text();
+    } else {
+        qDebug() << "커밋 완료!";
+    }
+    refreshData(); // 화면 갱신 (전표 및 잔고 리스트)
 }
 
 // -------------------------------------------------------------

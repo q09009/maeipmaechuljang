@@ -11,15 +11,12 @@ ApplicationWindow {
     title: "매입매출장"
 
     // [Logic & Data] - 변경 없음
-    //property string dataFilePath: "data/data.xlsx"
-    //property list<string> supplierList
-    //property list<string> productList
+
     property var supplierList: []
     property var productList: []
     property var supplierSearchList: []
     property var productSearchList
-    //property list<string> sizeList
-    //property list<string> priceList
+
 
     property int amountSum: 0
     property int gonggaSum: 0
@@ -42,41 +39,13 @@ ApplicationWindow {
     property bool searchedMae: true
 
     Component.onCompleted: {
-        //console.log(excelData.test());
-        //excelData.loadExcelInBackground();
+
         sqlData.initDB();
         supplierList = sqlData.getDataName();
         productList = sqlData.getDataProduct();
         supplierSearchList = ["전체", ...supplierList]
         productSearchList = [{"name": "전체"}, ...productList]
 
-        // if (excelData.loadExcelData()) {
-        //     var suppliers = excelData.getDataName();
-        //     var products = excelData.getDataProduct();
-        //     var sizes = excelData.getDataSize();
-        //     var prices = excelData.getDataPrice();
-
-        //     console.log("로드 성공! 업체 수: " + products.length);
-
-        //     for(let i=0;i<suppliers.length;i++) {
-        //         if(suppliers[i] === "") break;
-        //         else {
-        //             mainWindow.supplierList.push(suppliers[i]);
-        //             mainWindow.supplierSearchList.push(suppliers[i]);
-        //         }
-        //     }
-
-        //     for(let j=0;j<products.length;j++) {
-        //         mainWindow.productList.push(products[j]);
-        //         mainWindow.productSearchList.push(products[j]);
-        //         mainWindow.sizeList.push(sizes[j]);
-        //         mainWindow.priceList.push(prices[j]);
-        //     }
-        //     mainWindow.supplierSearchList.push("전체");
-        //     mainWindow.productSearchList.push("전체");
-        // } else {
-        //     //excelData.makeExcels();
-        // }
     }
 
     Component.onDestruction: {
@@ -439,10 +408,6 @@ ApplicationWindow {
                     sqlData.refreshData();
                     productList = sqlData.getDataProduct();
                     productSearchList = [{"name": "전체"}, ...productList];
-
-                    // mainWindow.productSearchList.push(productAddName.text);
-                    // mainWindow.sizeList.push(productAddSize.text);
-                    // mainWindow.priceList.push(productAddPrice.text);
                     console.log("추가 성공");
                     productAddPopup.close();
                     recordAddedPopup.open();
@@ -677,6 +642,34 @@ ApplicationWindow {
                     onClicked: { sqlData.writeRecordIp(ipgeumDate1.text, ipgeumAmount1.text, ipgeumDate2.text, ipgeumAmount2.text, ipgeumDate3.text, ipgeumAmount3.text, searchResultList.selectedRow); ipgeumPopup.close(); }
                 }
                 Button { text: qsTr("취소"); onClicked: ipgeumPopup.close() }
+            }
+        }
+    }
+
+    Popup {
+        id: ilgwalipgeumPopup
+        width: 300; height: 100
+        anchors.centerIn: parent
+        modal: true
+        closePolicy: Popup.CloseOnPressOutside
+        contentItem: ColumnLayout {
+            RowLayout {
+                Text { text: qsTr("입금일") }
+                TextField { id: ipgeumDate; placeholderText: qsTr("YYYY-MM-DD"); Layout.fillWidth: true }
+                Text { text: qsTr("입금액") }
+                TextField { id: ipgeumAmount; Layout.fillWidth: true }
+            }
+            RowLayout{
+                Layout.alignment: Qt.AlignRight
+                Button {
+                    text: qsTr("입력")
+                    onClicked: {
+                        sqlData.writeRecordIlgwalIpgeum(ipgeumDate.text, ipgeumAmount.text)
+                        recordAddedPopup.open()
+                        ilgwalipgeumPopup.close()
+                    }
+                }
+                Button { text: qsTr("X"); onClicked: ilgwalipgeumPopup.close() }
             }
         }
     }
@@ -973,7 +966,11 @@ ApplicationWindow {
                         }
                     }
                 }
-                Button { id: addIpgeumRecord; text: qsTr("💰 입금처리");
+                Button { id: addIpgeumRecord; text: qsTr("💰 일괄입금처리");
+                    onClicked: ilgwalipgeumPopup.open()
+                }
+
+                Button { id: adjIpgeumRecord; text: qsTr("입금수정");
                     onClicked: searchResultList.searchClicked ? ipgeumPopup.open() : noSelected.open()
                 }
                 Button {
