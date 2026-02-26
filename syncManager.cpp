@@ -48,3 +48,10 @@ void SyncManager::EtoS() {
         qDebug() << "엑셀에 데이터가 없거나 파일을 못 찾았습니다.";
     }
 }
+
+void SyncManager::makeMonthlyClosing(const QVariant &year, const QVariant &month) {
+    QList<QStringList> data = m_sql->readMonthlySql(year, month);
+    if(!data.isEmpty()) {
+        m_excel->makeMonthlyClosingExcel(data);
+    }
+}

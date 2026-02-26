@@ -28,6 +28,7 @@ qt_add_qml_module(appmaeipmaechuljang
         SOURCES syncManager.h
         SOURCES syncManager.cpp
         SOURCES
+        QML_FILES
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.

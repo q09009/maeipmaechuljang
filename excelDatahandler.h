@@ -126,6 +126,9 @@ public:
     void syncData(QVariantList &supplier, QList<QStringList> &product);
     void syncRecord(QList<QStringList> &records);
 
+    //월별 마감자료 만들때 쓸거
+    void makeMonthlyClosingExcel(QList<QStringList> records);
+
 
 signals:
     //처음 로딩할때 좀 오래걸리니까 로딩화면 추가해줘야지

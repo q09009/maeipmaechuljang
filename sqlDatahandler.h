@@ -77,6 +77,9 @@ public:
     Q_INVOKABLE void deleteDataSupplier(const QVariant &count);
     Q_INVOKABLE void deleteDataProduct(const QVariant &count);
 
+    // 월별 마감 엑셀 만드는데 보내줄것들
+    QList<QStringList> readMonthlySql(const QVariant &year, const QVariant &month);
+
 
 private:
     QSqlDatabase m_db;

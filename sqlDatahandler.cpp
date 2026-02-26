@@ -739,6 +739,33 @@ void SqlHandler::writeRecordIlgwalIpgeum(const QVariant &date, const QVariant &a
     refreshData(); // 화면 갱신 (전표 및 잔고 리스트)
 }
 
+QList<QStringList> SqlHandler::readMonthlySql(const QVariant &year, const QVariant &month) {
+    QList<QStringList> list;
+
+    QSqlQuery query(m_db);
+    query.prepare("SELECT gubun, tr_date, customer, item, spec, price, amount, supply_val, tax_val, total_val "
+                  "FROM records "
+                  "WHERE strftime('%Y', tr_date) = :y "
+                  "AND strftime('%m', tr_date) = :m");
+
+    // %m은 01, 02 처럼 두 자리를 기대하므로 형식을 맞춰줍니다.
+    query.bindValue(":y", QString::number(year.toInt()));
+    query.bindValue(":m", QString("%1").arg(month.toInt(), 2, 10, QChar('0')));
+
+    if(query.exec()) {
+        while (query.next()) {
+            QStringList data;
+            for(int i=0;i<10;i++) {
+                //qDebug() << query.value(i).toString();
+                data << query.value(i).toString();
+            }
+            //qDebug() << data;
+            list.append(data);
+        }
+    }
+    return list;
+}
+
 // -------------------------------------------------------------
 // qml로 데이터 반환하는 함수들
 // -------------------------------------------------------------

@@ -18,6 +18,8 @@ public:
     Q_INVOKABLE void StoE();
     Q_INVOKABLE void EtoS();
 
+    Q_INVOKABLE void makeMonthlyClosing(const QVariant &year, const QVariant &month);
+
 
 private:
     SqlHandler* m_sql = nullptr;

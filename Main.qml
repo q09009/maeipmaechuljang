@@ -59,7 +59,6 @@ ApplicationWindow {
     property bool searchedMae: true
 
     Component.onCompleted: {
-
         sqlData.initDB();
         supplierList = sqlData.getDataName();
         productList = sqlData.getDataProduct();
@@ -83,12 +82,14 @@ ApplicationWindow {
             MenuItem { text: qsTr("상품 변경"); onTriggered: productEditPopup.open() }
             MenuItem { text: qsTr("업체 삭제"); onTriggered: supplierDeletePopup.open() }
             MenuItem { text: qsTr("상품 삭제"); onTriggered: productDeletePopup.open() }
+            MenuItem { text: qsTr("마감엑셀 생성"); onTriggered: settlementPopup.open() }
             MenuItem { text: qsTr("엑셀 -> SQL"); onTriggered: recordEtoS.open() }
             MenuItem { text: qsTr("SQL -> 엑셀"); onTriggered: recordStoE.open() }
         }
         Menu {
             title: qsTr("통계")
             MenuItem { text: qsTr("월별통계"); onTriggered: monthStat.show() }
+
         }
         Menu {
             title: qsTr("도움말")
@@ -341,6 +342,8 @@ ApplicationWindow {
         }
     }
 
+
+
     Popup {
         id: supplierAddPopup
         width: 340; height: 110
@@ -376,6 +379,83 @@ ApplicationWindow {
         }
     }
 
+    Popup {
+            id: settlementPopup
+            width: 320; height: 110
+            anchors.centerIn: parent
+            modal: true
+            closePolicy: Popup.CloseOnPressOutside
+            padding: 16
+            background: Rectangle { color: mainWindow.themeCard; border.color: mainWindow.themeBorder; radius: mainWindow.radiusLg }
+            contentItem: RowLayout {
+                spacing: 12
+
+                ComboBox {
+                    id: settlementYearComboBox
+                    Layout.preferredWidth: 100 // Layout 크기 제어
+                    Layout.preferredHeight: 25
+                    model: Array.from({length: 41}, (v, i) => (2010 + i).toString())
+                    currentIndex: 16
+                    onActivated: (index) => {
+                                        console.log("선택된 옵션:", settlementYearComboBox.currentText);
+                                        console.log(productList[settlementYearComboBox.currentIndex].id);
+                                    }
+
+                    popup: Popup {
+                        y: settlementYearComboBox.height - 1
+                        width: settlementYearComboBox.width
+                        height: Math.min(contentItem.implicitHeight, 600)
+                        padding: 1
+                        contentItem: ListView {
+                            clip: true
+                            implicitHeight: contentHeight
+                            model: settlementYearComboBox.popup.visible ? settlementYearComboBox.delegateModel : null
+                            currentIndex: settlementYearComboBox.highlightedIndex
+                            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AlwaysOn }
+                        }
+                    }
+                }
+
+                ComboBox {
+                    id: settlementMonthComboBox
+                    Layout.preferredWidth: 50 // Layout 크기 제어
+                    Layout.preferredHeight: 25
+                    model: Array.from({length: 12}, (v, i) => (1+i).toString())
+                    currentIndex: 0
+                    onActivated: (index) => {
+                                     console.log("선택된 옵션:", settlementMonthComboBox.currentText);
+                                     console.log(productList[settlementMonthComboBox.currentIndex].id);
+                                 }
+                    popup: Popup {
+                        y: settlementMonthComboBox.height - 1
+                        width: settlementMonthComboBox.width
+                        height: Math.min(contentItem.implicitHeight, 600)
+                        padding: 1
+                        contentItem: ListView {
+                            clip: true
+                            implicitHeight: contentHeight
+                            model: settlementMonthComboBox.popup.visible ? settlementMonthComboBox.delegateModel : null
+                            currentIndex: settlementMonthComboBox.highlightedIndex
+                            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AlwaysOn }
+                        }
+                    }
+                }
+                Button {
+                    text: qsTr("생성")
+                    Layout.preferredWidth: 50
+                    onClicked: {
+                        sync.makeMonthlyClosing(settlementYearComboBox.currentText, settlementMonthComboBox.currentText)
+                        makeFinished.open()
+                        settlementPopup.close()
+                    }
+                }
+                Button {
+                    text: qsTr("닫기")
+                    onClicked: settlementPopup.close()
+                    background: Rectangle { color: parent.hovered ? "#f1f5f9" : mainWindow.themeCard; radius: mainWindow.radiusSm; border.color: mainWindow.themeBorder; border.width: 1 }
+                }
+            }
+        }
 
     Popup {
         id: productEditPopup
@@ -680,6 +760,11 @@ ApplicationWindow {
     ResultPopup {
         id: editFinished
         text: "수정 성공"
+    }
+
+    ResultPopup {
+        id: makeFinished
+        text: "생성 성공"
     }
 
     ResultPopup {

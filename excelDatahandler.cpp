@@ -129,7 +129,93 @@ void DataHandler::syncRecord(QList<QStringList> &records) {
     doc.save();
 }
 
+void DataHandler::makeMonthlyClosingExcel(QList<QStringList> records) {
+    if (records.isEmpty()) return;
 
+    // 1. 파일명 및 폴더 준비 (이전과 동일)
+    QString firstDate = records.at(0).at(1);
+    QString year = firstDate.split("-").at(0);
+    QString month = firstDate.split("-").at(1);
+    QString filePath = QString("data/%1-%2 마감.xlsx").arg(year).arg(month);
+    QDir().mkdir("data");
+
+    QXlsx::Document xlsx;
+    QStringList headers = {"구분", "날짜", "거래처", "품목", "규격", "단가", "수량", "공급가", "부가세", "합계"};
+
+    // --- 매입/매출 데이터를 미리 분류 ---
+    QList<QStringList> maeipList, maechulList;
+    for (const auto &row : records) {
+        if (row.at(0) == "매입") maeipList << row;
+        else maechulList << row;
+    }
+
+    // --- 시트 작성 람다 함수 (중복 로직 방지) ---
+    auto writeSheet = [&](QString sheetName, QList<QStringList> dataList) {
+        if (dataList.isEmpty()) return;
+
+        xlsx.addSheet(sheetName);
+        int curRow = 1;
+        long long totalS = 0, totalT = 0, totalH = 0; // 전체 합계용
+        QMap<QString, QList<QStringList>> customerMap; // 거래처별 그룹화
+
+        // A. 헤더 작성
+        for (int i = 0; i < headers.size(); ++i) xlsx.write(curRow, i + 1, headers[i]);
+        curRow++;
+
+        // B. 전체 내역 작성 및 합계 계산
+        for (const auto &row : dataList) {
+            for (int i = 0; i < row.size(); ++i) xlsx.write(curRow, i + 1, row.at(i));
+            totalS += row.at(7).toLongLong(); // 공급가
+            totalT += row.at(8).toLongLong(); // 부가세
+            totalH += row.at(9).toLongLong(); // 합계
+
+            // 거래처별 맵에 데이터 추가
+            customerMap[row.at(2)].append(row);
+            curRow++;
+        }
+
+        // C. 전체 합계 라인
+        xlsx.write(curRow, 7, "전체 합계:");
+        xlsx.write(curRow, 8, totalS);
+        xlsx.write(curRow, 9, totalT);
+        xlsx.write(curRow, 10, totalH);
+
+        curRow += 3; // 2줄 띄우기 (현재 행 + 3)
+
+        // D. 거래처별 상세 요약 시작
+        xlsx.write(curRow++, 1, "★ 거래처별 상세 요약 (소계)");
+
+        for (auto it = customerMap.begin(); it != customerMap.end(); ++it) {
+            QString customerName = it.key();
+            QList<QStringList> items = it.value();
+            long long subS = 0, subT = 0, subH = 0;
+
+            xlsx.write(curRow++, 1, "[" + customerName + " 내역]"); // 거래처 타이틀
+
+            for (const auto &item : items) {
+                for (int i = 0; i < item.size(); ++i) xlsx.write(curRow, i + 1, item.at(i));
+                subS += item.at(7).toLongLong();
+                subT += item.at(8).toLongLong();
+                subH += item.at(9).toLongLong();
+                curRow++;
+            }
+
+            // 거래처별 소계 작성
+            xlsx.write(curRow, 7, customerName + " 소계:");
+            xlsx.write(curRow, 8, subS);
+            xlsx.write(curRow, 9, subT);
+            xlsx.write(curRow, 10, subH);
+            curRow += 2; // 거래처 사이 공백
+        }
+    };
+
+    // --- 실제 실행 ---
+    writeSheet("매입", maeipList);
+    writeSheet("매출", maechulList);
+    xlsx.deleteSheet("Sheet1");
+
+    if (xlsx.saveAs(filePath)) qDebug() << "찐막 엑셀 저장 완료!";
+}
 
 void DataHandler::ensureRecordLoaded() {
     if(!m_recordDoc) {
