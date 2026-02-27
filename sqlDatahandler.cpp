@@ -239,6 +239,8 @@ void SqlHandler::refreshData() {
 bool SqlHandler::readRecordRange(const QVariant &startDate, const QVariant &endDate, bool mae, const QVariant &supplier, const QVariant &product) {
     if(!m_db.isOpen()) return false;
 
+
+
     searchedResult.clear();
     gaesoo = 0;
 
@@ -253,6 +255,7 @@ bool SqlHandler::readRecordRange(const QVariant &startDate, const QVariant &endD
         gubun = "매출";
     }
 
+    qInfo() << "레코드 탐색 시작" << startDate << "~" << endDate << "-" << gubun << "-" << supplier << "-" << product;
     QSqlQuery query(m_db);
     QString queryStr;
     queryStr = QString("SELECT * FROM records WHERE tr_date BETWEEN '%1' and '%2' AND gubun = '%3'").arg(startDate.toString(), endDate.toString(), gubun);
@@ -323,7 +326,7 @@ void SqlHandler::calcSearchedSum(const QVariant &startDate, const QVariant &endD
         misuSum = query.value(6).toInt();
     }
     ipamountSum = hapgyeSum.toInt() - mijiSum.toInt() - misuSum.toInt();
-    qDebug() << ipamountSum << "<< 이게 총 입금액";
+    //qDebug() << ipamountSum << "<< 이게 총 입금액";
 }
 
 void SqlHandler::monthTotalReady(const QVariant &year, const QVariant &gb, const QVariant &supplier, const QVariant &product) {
@@ -422,6 +425,8 @@ void SqlHandler::writeDataName(const QVariant &name) {
     query.prepare("INSERT INTO customer (name) VALUES (:name)");
     query.bindValue(":name", name.toString());
 
+    qInfo() << "거래처 이름 입력 - " << name;
+
     if(!query.exec()) {
         qDebug() << "추가 실패:" << query.lastError().text();
     }
@@ -436,6 +441,8 @@ void SqlHandler::writeDataProduct(const QVariant &product, const QVariant &size,
     query.bindValue(":size", size.toString());
     query.bindValue(":price", price.toString());
 
+    qInfo() << "거래 품목 추가 - " << product << "-" << size << "-" << price;
+
     if(!query.exec()) {
         qDebug() << "추가 실패:" << query.lastError().text();
     }
@@ -448,6 +455,8 @@ void SqlHandler::editDataSupplier(const QVariant &name, const QVariant &count) {
     query.prepare("UPDATE customer SET name = :name WHERE id = :id");
     query.bindValue(":name", name);
     query.bindValue(":id", count);
+
+    qInfo() << "거래처 이름 수정 - " << name;
 
     if(!query.exec()) {
         qDebug() << "수정 실패:" << query.lastError().text();
@@ -463,6 +472,8 @@ void SqlHandler::editDataProduct(const QVariant &product, const QVariant &size, 
     query.bindValue(":size", size.toString());
     query.bindValue(":price", price);
     query.bindValue(":id", count);
+
+    qInfo() << "거래 품목 수정 - " << product << "-" << size << "-" << price;
 
     if(!query.exec()) {
         qDebug() << "수정 실패:" << query.lastError().text();
@@ -488,45 +499,92 @@ void SqlHandler::writeRecordIp(const QVariant &date1, const QVariant &amount1, c
     query.bindValue(":a3", amount3);
     query.bindValue(":id", row);
 
+    qInfo() << "입금내역 수정 - " << d1 << "-" << amount1 << "//" << d2 << "-" << amount2 << "//" << d3 << "-" << amount3;
+
 
     if(!query.exec()) {
         qDebug() << "추가 실패:" << query.lastError().text();
     }
 }
 
-void SqlHandler::deleteDataSupplier(const QVariant &count) {
+// 1. 거래처 삭제
+void SqlHandler::deleteDataSupplier(const QVariant &id) {
     if(!m_db.isOpen()) return;
+
+    QString customerName = "알 수 없음";
+
+    // 삭제 전 이름 가져오기
+    QSqlQuery checkQuery(m_db);
+    checkQuery.prepare("SELECT customer FROM customer WHERE id = :id");
+    checkQuery.bindValue(":id", id);
+    if(checkQuery.exec() && checkQuery.next()) {
+        customerName = checkQuery.value(0).toString();
+    }
 
     QSqlQuery query(m_db);
     query.prepare("DELETE FROM customer WHERE id = :id");
-    query.bindValue(":id", count);
+    query.bindValue(":id", id);
 
-    if(!query.exec()) {
-        qDebug() << "삭제 실패:" << query.lastError().text();
+    if(query.exec()) {
+        qInfo() << "[SUCCESS] 거래처 삭제 완료 - (ID:" << id.toString() << ")" << customerName;
+    } else {
+        qCritical() << "[FAIL] 거래처 삭제 실패 - (ID:" << id.toString() << ")" << customerName
+                    << "사유:" << query.lastError().text();
     }
 }
 
-void SqlHandler::deleteDataProduct(const QVariant &count) {
+// 2. 거래 품목 삭제
+void SqlHandler::deleteDataProduct(const QVariant &id) {
     if(!m_db.isOpen()) return;
+
+    QString itemName = "알 수 없음";
+
+    // 삭제 전 품목명 가져오기
+    QSqlQuery checkQuery(m_db);
+    checkQuery.prepare("SELECT item FROM item WHERE id = :id");
+    checkQuery.bindValue(":id", id);
+    if(checkQuery.exec() && checkQuery.next()) {
+        itemName = checkQuery.value(0).toString();
+    }
 
     QSqlQuery query(m_db);
     query.prepare("DELETE FROM item WHERE id = :id");
-    query.bindValue(":id", count);
+    query.bindValue(":id", id);
 
-    if(!query.exec()) {
-        qDebug() << "삭제 실패:" << query.lastError().text();
+    if(query.exec()) {
+        qInfo() << "[SUCCESS] 품목 삭제 완료 - (ID:" << id.toString() << ")" << itemName;
+    } else {
+        qCritical() << "[FAIL] 품목 삭제 실패 - (ID:" << id.toString() << ")" << itemName
+                    << "사유:" << query.lastError().text();
     }
 }
 
-void SqlHandler::deleteRecord(const QVariant &row) {
+// 3. 거래 기록(전표) 삭제
+void SqlHandler::deleteRecord(const QVariant &id) {
     if(!m_db.isOpen()) return;
+
+    QString recordInfo = "정보 없음";
+
+    // 삭제 전 날짜, 거래처, 합계 정도는 남겨두기
+    QSqlQuery checkQuery(m_db);
+    checkQuery.prepare("SELECT tr_date, customer, total_val FROM records WHERE id = :id");
+    checkQuery.bindValue(":id", id);
+    if(checkQuery.exec() && checkQuery.next()) {
+        recordInfo = QString("[%1 | %2 | %3원]")
+                         .arg(checkQuery.value(0).toString())
+                         .arg(checkQuery.value(1).toString())
+                         .arg(checkQuery.value(2).toString());
+    }
 
     QSqlQuery query(m_db);
     query.prepare("DELETE FROM records WHERE id = :id");
-    query.bindValue(":id", row);
+    query.bindValue(":id", id);
 
-    if(!query.exec()) {
-        qDebug() << "삭제 실패:" << query.lastError().text();
+    if(query.exec()) {
+        qInfo() << "[SUCCESS] 전표 기록 삭제 완료 - (ID:" << id.toString() << ")" << recordInfo;
+    } else {
+        qCritical() << "[FAIL] 전표 기록 삭제 실패 - (ID:" << id.toString() << ")" << recordInfo
+                    << "사유:" << query.lastError().text();
     }
 }
 
@@ -561,6 +619,8 @@ void SqlHandler::writeExcelRecord(const bool &mae, const QVariant &date, const Q
     query.bindValue(":gongga", gongga);
     query.bindValue(":buga", buga);
     query.bindValue(":hap", gongga+buga);
+
+    qInfo() << "데이터 추가 - " << gb << "//" << dateOnly << "//" << supplier << "//" << product << "//" << size << "//" << price << "//" << quantity << "//" << gongga << "//" << buga << "//" << gongga+buga;
 
 
     if(!query.exec()) {
@@ -645,7 +705,7 @@ void SqlHandler::writeRecordIlgwalIpgeum(const QVariant &date, const QVariant &a
             // (미수금이 100(+), 입금이 50이면 balance는 150이 됨 - 이걸로 털기 시작)
             // (선수금이 50(-), 입금이 100이면 balance는 50이 됨 - 이걸로 털기 시작)
             remainingAmt += dataBalance[i];
-            qDebug() << dataBalance[i];
+           // qDebug() << dataBalance[i];
             break;
         }
     }
@@ -657,12 +717,15 @@ void SqlHandler::writeRecordIlgwalIpgeum(const QVariant &date, const QVariant &a
         customerId = idQuery.value(0).toInt();
     }
 
+    qInfo() << customerName << "에게 " << remainingAmt << "원 일괄입금 시작";
+
     QSqlQuery query(m_db);
     m_db.transaction(); // 데이터 안전을 위해 트랜잭션 시작!
 
     // 중요: 잔고를 변수에 담았으니 DB의 잔고는 일단 0으로 초기화 (나중에 남은 돈만 다시 넣을 것임)
     QString resetQuery = QString("UPDATE customer SET balance = 0 WHERE name = '%1'").arg(customerName);
     query.exec(resetQuery);
+
 
     // 2. 입금 대상 추출 루프 (검색된 결과 내에서 미수금이 있는 항목들)
     for (const QVariant &item : searchedResult) {
@@ -706,13 +769,10 @@ void SqlHandler::writeRecordIlgwalIpgeum(const QVariant &date, const QVariant &a
 
         queryStr += QString(" WHERE id = %1").arg(idList[i]);
         query.exec(queryStr);
+        qInfo() << "입금처리중... " << ip << "원 입금처리하고 잔액은 "<<remainingAmt << "원";
     }
 
-    // 1. 쿼리 실행 전 값 확인
-    qDebug() << "--- 최종 점검 ---";
-    qDebug() << "Target ID:" << customerId;
-    qDebug() << "Target Name:" << customerName;
-    qDebug() << "Remaining Amt:" << remainingAmt;
+
 
     QSqlQuery finalQuery(m_db);
     QString porm = (isMae ? "+" : "-");

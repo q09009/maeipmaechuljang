@@ -385,6 +385,7 @@ ApplicationWindow {
             anchors.centerIn: parent
             modal: true
             closePolicy: Popup.CloseOnPressOutside
+            property date currentDate : new Date()
             padding: 16
             background: Rectangle { color: mainWindow.themeCard; border.color: mainWindow.themeBorder; radius: mainWindow.radiusLg }
             contentItem: RowLayout {
@@ -395,7 +396,7 @@ ApplicationWindow {
                     Layout.preferredWidth: 100 // Layout 크기 제어
                     Layout.preferredHeight: 25
                     model: Array.from({length: 41}, (v, i) => (2010 + i).toString())
-                    currentIndex: 16
+                    currentIndex: settlementPopup.currentDate.getFullYear() - 2010
                     onActivated: (index) => {
                                         console.log("선택된 옵션:", settlementYearComboBox.currentText);
                                         console.log(productList[settlementYearComboBox.currentIndex].id);
@@ -421,7 +422,7 @@ ApplicationWindow {
                     Layout.preferredWidth: 50 // Layout 크기 제어
                     Layout.preferredHeight: 25
                     model: Array.from({length: 12}, (v, i) => (1+i).toString())
-                    currentIndex: 0
+                    currentIndex: settlementPopup.currentDate.getMonth()
                     onActivated: (index) => {
                                      console.log("선택된 옵션:", settlementMonthComboBox.currentText);
                                      console.log(productList[settlementMonthComboBox.currentIndex].id);
@@ -1037,14 +1038,22 @@ ApplicationWindow {
                 }
                 TextField { id: textBuGa; readOnly: true; Layout.fillWidth: true; horizontalAlignment: Text.AlignRight; placeholderText: "부가세";
                     text: {
-                        var g=parseInt(textGongGa.text);
-                        if(!taxornot.ta) {
+                        var g = parseInt(textGongGa.text);
+
+                        // 부가세 설정이 꺼져있으면 0 반환
+                        if (!taxornot.ta) {
                             return "0";
                         }
-                        if(isNaN(g)) return "0";
-                        var result = g*0.1;
 
-                        return result.toLocaleString(Qt.locale("ko_KR"), "f", 0).replace(/,/g, "");
+                        // 숫자가 아니면 0 반환
+                        if (isNaN(g)) return "0";
+
+                        // 1. 여기서 Math.floor를 써서 원 단위 미만을 싹둑 잘라냅니다!
+                        var result = Math.floor(g * 0.1);
+
+                        // 2. 문자열로 변환 (콤마 없이 순수 숫자만)
+                        // 이제 소수점이 이미 날아갔으니 단순히 toString()만 해도 충분합니다.
+                        return result.toString();
                     } }
                 TextField { id: textHapGye; readOnly: true; Layout.fillWidth: true; horizontalAlignment: Text.AlignRight; placeholderText: "합계"; font.bold: true;
                     text: {
@@ -1179,6 +1188,7 @@ ApplicationWindow {
                     font.bold: true
                     onClicked: {
                         mainWindow.searchedMae = searchMaeip.mae
+                        searchResultList.selectedRow = 0
                         if(sqlData.readRecordRange(searchCalendarFirst.currentDate, searchCalendarSecond.currentDate, searchMaeip.mae, searchSupplierComboBox.currentText, searchProductComboBox.currentText)) {
                             mainWindow.readRows = []; mainWindow.combinedModel = [];
                             mainWindow.amountSum = 0; mainWindow.gonggaSum = 0; mainWindow.bugaSum = 0;
