@@ -5,8 +5,22 @@
 #include <QSqlDatabase>
 #include <QDir>
 #include <QStandardPaths>
+#include <QCoreApplication>
+#include <QTimer>
 
-SqlHandler::SqlHandler(QObject *parent) : QObject(parent) {}
+SqlHandler::SqlHandler(QObject *parent) : QObject(parent) {
+    // 1. 타이머 객체 생성
+    QTimer *backupTimer = new QTimer(this);
+
+    // 2. 타이머가 끝날 때마다 백업 함수 실행하도록 연결
+    connect(backupTimer, &QTimer::timeout, this, &SqlHandler::backupDB);
+
+    // 3. 시간 설정 (예: 1시간마다 = 1000ms * 60s * 60m)
+    // 테스트용으로 짧게 보시려면 1000 * 60 (1분) 정도로 해보세요!
+    backupTimer->start(1000 * 60 * 60 * 4);
+
+    qDebug() << "자동 백업 타이머 가동: 4시간 주기";
+}
 
 SqlHandler::~SqlHandler() {
     if (m_db.isOpen()) m_db.close();
@@ -84,6 +98,8 @@ void SqlHandler::initDB() {
 }
 
 void SqlHandler::syncExcelToSql(const QList<QStringList>& dataList) {
+    //혹시 모르니 백업 먼저 생성
+    backupDB();
     if (!m_db.isOpen()) return;
 
     // 1. 기존 데이터 삭제 (새로 동기화할 때 중복 방지)
@@ -255,7 +271,7 @@ bool SqlHandler::readRecordRange(const QVariant &startDate, const QVariant &endD
         gubun = "매출";
     }
 
-    qInfo() << "레코드 탐색 시작" << startDate << "~" << endDate << "-" << gubun << "-" << supplier << "-" << product;
+    qInfo() << "레코드 탐색 시작" << startDate.toString() << "~" << endDate.toString() << "-" << gubun << "-" << supplier.toString() << "-" << product.toString();
     QSqlQuery query(m_db);
     QString queryStr;
     queryStr = QString("SELECT * FROM records WHERE tr_date BETWEEN '%1' and '%2' AND gubun = '%3'").arg(startDate.toString(), endDate.toString(), gubun);
@@ -425,7 +441,7 @@ void SqlHandler::writeDataName(const QVariant &name) {
     query.prepare("INSERT INTO customer (name) VALUES (:name)");
     query.bindValue(":name", name.toString());
 
-    qInfo() << "거래처 이름 입력 - " << name;
+    qInfo() << "거래처 이름 입력 - " << name.toString();
 
     if(!query.exec()) {
         qDebug() << "추가 실패:" << query.lastError().text();
@@ -441,7 +457,7 @@ void SqlHandler::writeDataProduct(const QVariant &product, const QVariant &size,
     query.bindValue(":size", size.toString());
     query.bindValue(":price", price.toString());
 
-    qInfo() << "거래 품목 추가 - " << product << "-" << size << "-" << price;
+    qInfo() << "거래 품목 추가 - " << product.toString() << "-" << size.toString() << "-" << price.toString();
 
     if(!query.exec()) {
         qDebug() << "추가 실패:" << query.lastError().text();
@@ -456,7 +472,7 @@ void SqlHandler::editDataSupplier(const QVariant &name, const QVariant &count) {
     query.bindValue(":name", name);
     query.bindValue(":id", count);
 
-    qInfo() << "거래처 이름 수정 - " << name;
+    qInfo() << "거래처 이름 수정 - " << name.toString();
 
     if(!query.exec()) {
         qDebug() << "수정 실패:" << query.lastError().text();
@@ -473,7 +489,7 @@ void SqlHandler::editDataProduct(const QVariant &product, const QVariant &size, 
     query.bindValue(":price", price);
     query.bindValue(":id", count);
 
-    qInfo() << "거래 품목 수정 - " << product << "-" << size << "-" << price;
+    qInfo() << "거래 품목 수정 - " << product.toString() << "-" << size.toString() << "-" << price.toString();
 
     if(!query.exec()) {
         qDebug() << "수정 실패:" << query.lastError().text();
@@ -825,6 +841,64 @@ QList<QStringList> SqlHandler::readMonthlySql(const QVariant &year, const QVaria
     }
     return list;
 }
+
+bool SqlHandler::backupDB() {
+    // 1. 저장할 폴더 만들기
+    QString backupDir = QCoreApplication::applicationDirPath() + "/data/backups";
+    QDir().mkpath(backupDir);
+
+    // 2. 파일명 만들기 (날짜와 시간 포함 - 그래야 여러 개 쌓임)
+    QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd_hhmmss");
+    QString sourceFile = QCoreApplication::applicationDirPath() + "/data/data.db"; // 원본 DB 이름
+    QString destFile = backupDir + QString("/backup_%1.db").arg(timestamp);
+
+    // 3. 파일 복사
+    if (QFile::copy(sourceFile, destFile)) {
+        qInfo() << "[BACKUP] 데이터베이스 백업 성공:" << destFile;
+        return true;
+    } else {
+        qCritical() << "[BACKUP] 백업 실패! 원인:" << QFile(sourceFile).errorString();
+        return false;
+    }
+}
+
+void SqlHandler::cleanOldBackups() {
+    QString backupDir = QCoreApplication::applicationDirPath() + "/data/backups";
+    QDir dir(backupDir);
+
+    if (!dir.exists()) return;
+
+    // 1. 파일 이름 필터 설정 (backup_*.db 형태만 찾기)
+    QStringList filters;
+    filters << "backup_*.db";
+    dir.setNameFilters(filters);
+
+    // 2. 파일 정보를 날짜순(오래된 순)으로 가져오기
+    dir.setSorting(QDir::Time | QDir::Reversed);
+    QFileInfoList list = dir.entryInfoList();
+
+    // 3. 현재 시간 기준
+    QDateTime now = QDateTime::currentDateTime();
+    int daysToKeep = 7; // ★ 7일치만 남기겠다!
+
+    qInfo() << "[CLEANUP] 오래된 백업 확인 중...";
+
+    for (int i = 0; i < list.size(); ++i) {
+        QFileInfo fileInfo = list.at(i);
+
+        // 파일의 마지막 수정 날짜와 오늘 날짜 차이 계산
+        qint64 daysDiff = fileInfo.lastModified().daysTo(now);
+
+        if (daysDiff > daysToKeep) {
+            if (QFile::remove(fileInfo.absoluteFilePath())) {
+                qInfo() << "[CLEANUP] 삭제됨 (오래된 파일):" << fileInfo.fileName();
+            } else {
+                qWarning() << "[CLEANUP] 삭제 실패:" << fileInfo.fileName();
+            }
+        }
+    }
+}
+
 
 // -------------------------------------------------------------
 // qml로 데이터 반환하는 함수들

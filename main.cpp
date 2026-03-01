@@ -15,6 +15,12 @@
 using namespace QXlsx;
 
 void myMessageOutput(QtMsgType type, const QMessageLogContext &context, const QString &msg) {
+
+    if (msg.contains("The current style does not support") ||
+        msg.contains("Cannot read property 'width' of null")) {
+        return; // 함수 바로 종료
+    }
+
     QDir().mkdir("logs");
     QString fileName = QString("logs/log_%1.txt").arg(QDateTime::currentDateTime().toString("yyyy-MM-dd"));
 
@@ -55,6 +61,8 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("sqlData", &sqlHandler);
     engine.rootContext()->setContextProperty("sync", &syncManager);
 
+    sqlHandler.cleanOldBackups();
+
     const QUrl url(QStringLiteral("qrc:/main.qml"));
 
     QObject::connect(
@@ -64,6 +72,12 @@ int main(int argc, char *argv[])
         []() { QCoreApplication::exit(-1); },
         Qt::QueuedConnection);
     engine.loadFromModule("maeipmaechuljang", "Main");
+
+    // 앱이 종료되기 직전에 sqlHandler의 backupDB를 실행해라!
+    QObject::connect(&app, &QCoreApplication::aboutToQuit, [&sqlHandler]() {
+        qInfo() << "앱 종료 감지: 최종 백업을 시작합니다.";
+        sqlHandler.backupDB();
+    });
 
     return app.exec();
 }

@@ -80,6 +80,10 @@ public:
     // 월별 마감 엑셀 만드는데 보내줄것들
     QList<QStringList> readMonthlySql(const QVariant &year, const QVariant &month);
 
+    // 백업 실행하는 함수
+    bool backupDB();
+
+    void cleanOldBackups();
 
 private:
     QSqlDatabase m_db;

@@ -855,7 +855,22 @@ ApplicationWindow {
             RowLayout {
                 spacing: 8
                 Text { text: qsTr("입금일"); font.pixelSize: 12; color: mainWindow.themeMuted }
-                TextField { id: ipgeumDate; placeholderText: qsTr("YYYY-MM-DD"); Layout.fillWidth: true }
+                Button {
+                    id: ilcalendarButton
+                    property date currentDate : new Date()
+                    text: qsTr(`${currentDate.getFullYear()}-${currentDate.getMonth()+1}-${currentDate.getDate()}`)
+                    onClicked: {
+                        sharedCalendarPopup.targetItem = ilcalendarButton
+                        sharedCalendarPopup.open()
+                    }
+
+                    background: Rectangle {
+                        color: parent.hovered ? "#f1f5f9" : mainWindow.themeCard
+                        radius: mainWindow.radiusSm
+                        border.color: mainWindow.themeBorder
+                        border.width: 1
+                    }
+                }
                 Text { text: qsTr("입금액"); font.pixelSize: 12; color: mainWindow.themeMuted }
                 TextField { id: ipgeumAmount; Layout.fillWidth: true }
             }
@@ -865,7 +880,7 @@ ApplicationWindow {
                 Button {
                     text: qsTr("입력")
                     onClicked: {
-                        sqlData.writeRecordIlgwalIpgeum(ipgeumDate.text, ipgeumAmount.text)
+                        sqlData.writeRecordIlgwalIpgeum(ilcalendarButton.currentDate, ipgeumAmount.text)
                         recordAddedPopup.open()
                         ilgwalipgeumPopup.close()
                     }
@@ -882,35 +897,71 @@ ApplicationWindow {
     }
 
     Popup {
-        id: calendarPopup
+        id: sharedCalendarPopup
+        property var targetItem: null // 날짜를 넘겨줄 대상(버튼 등) 저장
+
         width: 294; height: 324
         anchors.centerIn: parent
         modal: true
         closePolicy: Popup.CloseOnPressOutside
-        padding: 8
+
         background: Rectangle { color: mainWindow.themeCard; border.color: mainWindow.themeBorder; radius: mainWindow.radiusLg }
-        contentItem: MyCalendar { anchors.fill: parent; calendarParent: 0 }
+
+        contentItem: MyCalendar {
+            id: globalCalendarUI
+            // 달력에서 날짜를 찍으면 실행될 로직
+            onDateSelected: (date) => {
+                if (sharedCalendarPopup.targetItem) {
+                    sharedCalendarPopup.targetItem.currentDate = date
+                }
+                sharedCalendarPopup.close()
+            }
+            // 닫기 버튼 눌렀을 때
+            onCloseRequested: sharedCalendarPopup.close()
+            anchors.fill: parent
+        }
+        onOpened: {
+                if (targetItem && targetItem.currentDate) {
+                    // 1. 달력의 선택된 날짜를 버튼의 날짜로 바꿈
+                    globalCalendarUI.selectedDate = targetItem.currentDate
+
+                    // 2. 달력의 페이지(연/월)도 버튼의 날짜에 맞춰서 강제 이동
+                    globalCalendarUI.year = targetItem.currentDate.getFullYear()
+                    globalCalendarUI.month = targetItem.currentDate.getMonth() + 1
+                }
+            }
     }
-    Popup {
-        id: scalendarPopup1
-        width: 294; height: 324
-        anchors.centerIn: parent
-        modal: true
-        closePolicy: Popup.CloseOnPressOutside
-        padding: 8
-        background: Rectangle { color: mainWindow.themeCard; border.color: mainWindow.themeBorder; radius: mainWindow.radiusLg }
-        contentItem: MyCalendar { anchors.fill: parent; calendarParent: 1 }
-    }
-    Popup {
-        id: scalendarPopup2
-        width: 294; height: 324
-        anchors.centerIn: parent
-        modal: true
-        closePolicy: Popup.CloseOnPressOutside
-        padding: 8
-        background: Rectangle { color: mainWindow.themeCard; border.color: mainWindow.themeBorder; radius: mainWindow.radiusLg }
-        contentItem: MyCalendar { anchors.fill: parent; calendarParent: 2 }
-    }
+
+    // Popup {
+    //     id: calendarPopup
+    //     width: 294; height: 324
+    //     anchors.centerIn: parent
+    //     modal: true
+    //     closePolicy: Popup.CloseOnPressOutside
+    //     padding: 8
+    //     background: Rectangle { color: mainWindow.themeCard; border.color: mainWindow.themeBorder; radius: mainWindow.radiusLg }
+    //     contentItem: MyCalendar { anchors.fill: parent; calendarParent: 0 }
+    // }
+    // Popup {
+    //     id: scalendarPopup1
+    //     width: 294; height: 324
+    //     anchors.centerIn: parent
+    //     modal: true
+    //     closePolicy: Popup.CloseOnPressOutside
+    //     padding: 8
+    //     background: Rectangle { color: mainWindow.themeCard; border.color: mainWindow.themeBorder; radius: mainWindow.radiusLg }
+    //     contentItem: MyCalendar { anchors.fill: parent; calendarParent: 1 }
+    // }
+    // Popup {
+    //     id: scalendarPopup2
+    //     width: 294; height: 324
+    //     anchors.centerIn: parent
+    //     modal: true
+    //     closePolicy: Popup.CloseOnPressOutside
+    //     padding: 8
+    //     background: Rectangle { color: mainWindow.themeCard; border.color: mainWindow.themeBorder; radius: mainWindow.radiusLg }
+    //     contentItem: MyCalendar { anchors.fill: parent; calendarParent: 2 }
+    // }
 
 
     // [Main Layout]
@@ -953,7 +1004,11 @@ ApplicationWindow {
                     id: calendarButton
                     property date currentDate : new Date()
                     text: qsTr(`${currentDate.getFullYear()}-${currentDate.getMonth()+1}-${currentDate.getDate()}`)
-                    onClicked: calendarPopup.open()
+                    onClicked: {
+                        sharedCalendarPopup.targetItem = calendarButton
+                        sharedCalendarPopup.open()
+                    }
+
                     background: Rectangle {
                         color: parent.hovered ? "#f1f5f9" : mainWindow.themeCard
                         radius: mainWindow.radiusSm
@@ -1104,7 +1159,11 @@ ApplicationWindow {
                     id: searchCalendarFirst
                     property date currentDate : new Date()
                     text: qsTr(`${currentDate.getFullYear()}-${currentDate.getMonth()+1}-${currentDate.getDate()}`)
-                    onClicked: scalendarPopup1.open()
+                    onClicked: {
+                        sharedCalendarPopup.targetItem = searchCalendarFirst
+                        sharedCalendarPopup.open()
+                    }
+
                     background: Rectangle { color: parent.hovered ? "#f1f5f9" : mainWindow.themeCard; radius: mainWindow.radiusSm; border.color: mainWindow.themeBorder; border.width: 1 }
                 }
                 Text { text: "~"; color: mainWindow.themeMuted }
@@ -1112,7 +1171,11 @@ ApplicationWindow {
                     id: searchCalendarSecond
                     property date currentDate : new Date()
                     text: qsTr(`${currentDate.getFullYear()}-${currentDate.getMonth()+1}-${currentDate.getDate()}`)
-                    onClicked: scalendarPopup2.open()
+                    onClicked: {
+                        sharedCalendarPopup.targetItem = searchCalendarSecond
+                        sharedCalendarPopup.open()
+                    }
+
                     background: Rectangle { color: parent.hovered ? "#f1f5f9" : mainWindow.themeCard; radius: mainWindow.radiusSm; border.color: mainWindow.themeBorder; border.width: 1 }
                 }
 

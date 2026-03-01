@@ -19,7 +19,10 @@ Rectangle {
     property date selectedDate: new Date()
     property int year: selectedDate.getFullYear()
     property int month: selectedDate.getMonth() + 1
-    property int calendarParent
+    //property int calendarParent
+
+    signal dateSelected(date date)
+    signal closeRequested()
 
     function changeMonth(step) {
         var newDate = new Date(year, month - 1 + step, 1)
@@ -100,9 +103,10 @@ Rectangle {
                 Layout.preferredHeight: 28
                 flat: true
                 onClicked: {
-                    if(calendarParent === 0) calendarPopup.close()
-                    else if(calendarParent === 1) scalendarPopup1.close()
-                    else if(calendarParent === 2) scalendarPopup2.close()
+                    // if(calendarParent === 0) calendarPopup.close()
+                    // else if(calendarParent === 1) scalendarPopup1.close()
+                    // else if(calendarParent === 2) scalendarPopup2.close()
+                    root.closeRequested() // "나 닫고 싶어!"라고 신호만 보냄
                 }
                 contentItem: Text {
                     text: parent.text
@@ -165,9 +169,10 @@ Rectangle {
                     hoverEnabled: true
                     onClicked: {
                         root.selectedDate = model.date
-                        if(calendarParent === 0) calendarButton.currentDate = model.date
-                        else if(calendarParent === 1) searchCalendarFirst.currentDate = model.date
-                        else if(calendarParent === 2) searchCalendarSecond.currentDate = model.date
+                        // if(calendarParent === 0) calendarButton.currentDate = model.date
+                        // else if(calendarParent === 1) searchCalendarFirst.currentDate = model.date
+                        // else if(calendarParent === 2) searchCalendarSecond.currentDate = model.date
+                        root.dateSelected(model.date)
                     }
                 }
             }
