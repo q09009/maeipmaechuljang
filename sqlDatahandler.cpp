@@ -585,13 +585,14 @@ void SqlHandler::deleteRecord(const QVariant &id) {
 
     // 삭제 전 날짜, 거래처, 합계 정도는 남겨두기
     QSqlQuery checkQuery(m_db);
-    checkQuery.prepare("SELECT tr_date, customer, total_val FROM records WHERE id = :id");
+    checkQuery.prepare("SELECT tr_date, customer, item, total_val FROM records WHERE id = :id");
     checkQuery.bindValue(":id", id);
     if(checkQuery.exec() && checkQuery.next()) {
-        recordInfo = QString("[%1 | %2 | %3원]")
+        recordInfo = QString("[%1 | %2 | %3 | %4원]")
                          .arg(checkQuery.value(0).toString())
                          .arg(checkQuery.value(1).toString())
-                         .arg(checkQuery.value(2).toString());
+                         .arg(checkQuery.value(2).toString())
+                         .arg(checkQuery.value(3).toString());
     }
 
     QSqlQuery query(m_db);

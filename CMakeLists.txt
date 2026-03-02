@@ -29,6 +29,7 @@ qt_add_qml_module(appmaeipmaechuljang
         SOURCES syncManager.cpp
         SOURCES
         QML_FILES
+        QML_FILES qml/DocumentExportView.qml
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
