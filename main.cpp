@@ -34,7 +34,7 @@ void myMessageOutput(QtMsgType type, const QMessageLogContext &context, const QS
 
         // 포맷: [시간] [종류] (파일명:라인) 메시지
         ts << QString("[%1] [%2] (%3:%4) - %5")
-                  .arg(time, (type == QtDebugMsg ? "DEBUG" : "ERROR"), file)
+                  .arg(time, (type == QtInfoMsg ? "INFO" : "OTHER"), file)
                   .arg(context.line).arg(msg) << Qt::endl;
 
         outFile.close();
@@ -62,6 +62,7 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("sync", &syncManager);
 
     sqlHandler.cleanOldBackups();
+    sqlHandler.cleanOldLogs();
 
     const QUrl url(QStringLiteral("qrc:/main.qml"));
 

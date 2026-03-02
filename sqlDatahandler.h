@@ -84,6 +84,7 @@ public:
     bool backupDB();
 
     void cleanOldBackups();
+    void cleanOldLogs();
 
 private:
     QSqlDatabase m_db;

@@ -141,7 +141,7 @@ void SqlHandler::syncExcelToSql(const QList<QStringList>& dataList) {
 
     // 4. 한 번에 저장 확정
     if (m_db.commit()) {
-        qDebug() << "총" << dataList.size() << "건의 데이터 동기화 완료!";
+        qInfo() << "총" << dataList.size() << "건의 데이터 동기화 완료!";
     } else {
         qDebug() << "커밋 실패:" << m_db.lastError().text();
         m_db.rollback(); // 실패 시 되돌리기
@@ -181,8 +181,8 @@ void SqlHandler::syncExcelToSqlData(const QVariantList &customers, const QList<Q
     }
 
     if (m_db.commit()) {
-        qDebug() << "총" << customers.size() << "건의 거래처명 동기화 완료!";
-        qDebug() << "총" << items.size() << "건의 상품들 동기화 완료!";
+        qInfo() << "총" << customers.size() << "건의 거래처명 동기화 완료!";
+        qInfo() << "총" << items.size() << "건의 상품들 동기화 완료!";
     } else {
         qDebug() << "커밋 실패:" << m_db.lastError().text();
         m_db.rollback(); // 실패 시 되돌리기
@@ -347,6 +347,8 @@ void SqlHandler::calcSearchedSum(const QVariant &startDate, const QVariant &endD
 
 void SqlHandler::monthTotalReady(const QVariant &year, const QVariant &gb, const QVariant &supplier, const QVariant &product) {
     if(!m_db.isOpen()) return;
+
+    qInfo() << "월별통계 조회 - " << year.toString() << "년" << gb.toString() << "-" << supplier.toString() << "-" << product.toString();
 
     QString baseCondition = QString("WHERE strftime('%Y', tr_date) = '%1' AND gubun = '%2' ")
                                 .arg(year.toString(), gb.toString());
@@ -515,7 +517,7 @@ void SqlHandler::writeRecordIp(const QVariant &date1, const QVariant &amount1, c
     query.bindValue(":a3", amount3);
     query.bindValue(":id", row);
 
-    qInfo() << "입금내역 수정 - " << d1 << "-" << amount1 << "//" << d2 << "-" << amount2 << "//" << d3 << "-" << amount3;
+    qInfo() << "입금내역 수정 - " << d1 << "-" << amount1.toString() << "//" << d2 << "-" << amount2.toString() << "//" << d3 << "-" << amount3.toString();
 
 
     if(!query.exec()) {
@@ -657,7 +659,7 @@ QList<QStringList> SqlHandler::readAllSqlRecord() {
                 //qDebug() << query.value(i).toString();
                 data << query.value(i).toString();
             }
-            qDebug() << data;
+            //qDebug() << data;
             list.append(data);
         }
     }
@@ -890,6 +892,48 @@ void SqlHandler::cleanOldBackups() {
         qint64 daysDiff = fileInfo.lastModified().daysTo(now);
 
         if (daysDiff > daysToKeep) {
+            if (QFile::remove(fileInfo.absoluteFilePath())) {
+                qInfo() << "[CLEANUP] 삭제됨 (오래된 파일):" << fileInfo.fileName();
+            } else {
+                qWarning() << "[CLEANUP] 삭제 실패:" << fileInfo.fileName();
+            }
+        }
+    }
+}
+
+void SqlHandler::cleanOldLogs() {
+    QString logDir = QCoreApplication::applicationDirPath() + "/logs";
+    QDir dir(logDir);
+
+    if (!dir.exists()) return;
+
+    // 1. 파일 이름 필터 설정 (log_*.txt 형태만 찾기)
+    QStringList filters;
+    filters << "log_*.txt";
+    dir.setNameFilters(filters);
+
+    // 2. 파일 정보를 날짜순(오래된 순)으로 가져오기
+    dir.setSorting(QDir::Name);
+    QFileInfoList list = dir.entryInfoList();
+
+    // 3. 현재 시간 기준
+    QDateTime now = QDateTime::currentDateTime();
+    int daysToKeep = 7; // ★ 7일치만 남기겠다!
+
+    qInfo() << "[CLEANUP] 오래된 로그 확인 중...";
+
+    for (int i = 0; i < list.size(); ++i) {
+        QFileInfo fileInfo = list.at(i);
+
+        // 파일의 마지막 수정 날짜와 오늘 날짜 차이 계산
+        //qint64 daysDiff = fileInfo.lastModified().daysTo(now);
+
+        // 뒤에 날짜부분 읽어서 그거대로 계산함
+        QString dateStr = fileInfo.baseName().mid(4);
+        QDate fileDate = QDate::fromString(dateStr, "yyyy-MM-dd");
+        qint64 actualDaysDiff = fileDate.daysTo(now.date());
+
+        if (actualDaysDiff > daysToKeep) {
             if (QFile::remove(fileInfo.absoluteFilePath())) {
                 qInfo() << "[CLEANUP] 삭제됨 (오래된 파일):" << fileInfo.fileName();
             } else {
