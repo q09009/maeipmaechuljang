@@ -271,10 +271,13 @@ bool SqlHandler::readRecordRange(const QVariant &startDate, const QVariant &endD
         gubun = "매출";
     }
 
+
     qInfo() << "레코드 탐색 시작" << startDate.toString() << "~" << endDate.toString() << "-" << gubun << "-" << supplier.toString() << "-" << product.toString();
     QSqlQuery query(m_db);
     QString queryStr;
-    queryStr = QString("SELECT * FROM records WHERE tr_date BETWEEN '%1' and '%2' AND gubun = '%3'").arg(startDate.toString(), endDate.toString(), gubun);
+    QString sDate = startDate.toDate().toString("yyyy-MM-dd");      //이거를 해야 날짜 검색할때 이상/이하로 나옴
+    QString eDate = endDate.toDate().toString("yyyy-MM-dd");        //이거도 마찬가지, 안하면 초과/미만으로 나옴
+    queryStr = QString("SELECT * FROM records WHERE tr_date BETWEEN '%1' and '%2' AND gubun = '%3'").arg(sDate, eDate, gubun);
     if(supplier != "전체") {
         queryStr += QString(" AND customer = '%1'").arg(supplier.toString());
     }
