@@ -528,6 +528,34 @@ void SqlHandler::writeRecordIp(const QVariant &date1, const QVariant &amount1, c
     }
 }
 
+void SqlHandler::writeRecordIpFull(const QVariant &trDate, const QVariant &date1, const QVariant &amount1, const QVariant &date2, const QVariant &amount2, const QVariant &date3, const QVariant &amount3, const QVariant &row) {
+    if(!m_db.isOpen()) return;
+
+    QDate tr = trDate.toDate();
+    QDateTime dt1 = date1.toDateTime();
+    QDate d1 = dt1.date();
+    QDateTime dt2 = date2.toDateTime();
+    QDate d2 = dt2.date();
+    QDateTime dt3 = date3.toDateTime();
+    QDate d3 = dt3.date();
+    QSqlQuery query(m_db);
+    query.prepare("UPDATE records SET tr_date = :tr, pay_date1 = :d1, pay_amt1 = :a1, pay_date2 = :d2, pay_amt2 = :a2, pay_date3 = :d3, pay_amt3 = :a3 WHERE id = :id");
+    query.bindValue(":tr", tr);
+    query.bindValue(":d1", d1);
+    query.bindValue(":a1", amount1);
+    query.bindValue(":d2", d2);
+    query.bindValue(":a2", amount2);
+    query.bindValue(":d3", d3);
+    query.bindValue(":a3", amount3);
+    query.bindValue(":id", row);
+
+    qInfo() << "입금내역 수정(거래날짜포함) - " << tr << "//" << d1 << "-" << amount1.toString() << "//" << d2 << "-" << amount2.toString() << "//" << d3 << "-" << amount3.toString();
+
+    if(!query.exec()) {
+        qDebug() << "입금내역 수정 실패:" << query.lastError().text();
+    }
+}
+
 // 1. 거래처 삭제
 void SqlHandler::deleteDataSupplier(const QVariant &id) {
     if(!m_db.isOpen()) return;
