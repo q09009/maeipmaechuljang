@@ -528,6 +528,58 @@ void SqlHandler::writeRecordIp(const QVariant &date1, const QVariant &amount1, c
     }
 }
 
+void SqlHandler::writeRecordFull(const QVariant &trDate, const QVariant &supplier, const QVariant &product, const QVariant &size, const QVariant &price, const QVariant &quantity, const QVariant &date1, const QVariant &amount1, const QVariant &date2, const QVariant &amount2, const QVariant &date3, const QVariant &amount3, const QVariant &row) {
+    if(!m_db.isOpen()) return;
+
+    // 기존 세금 여부 확인 (tax_val > 0 이면 과세)
+    QSqlQuery checkQuery(m_db);
+    checkQuery.prepare("SELECT tax_val FROM records WHERE id = :id");
+    checkQuery.bindValue(":id", row);
+    bool isTaxed = false;
+    if(checkQuery.exec() && checkQuery.next()) {
+        isTaxed = checkQuery.value(0).toInt() > 0;
+    }
+
+    int priceInt = price.toInt();
+    int quantityInt = quantity.toInt();
+    int gongga = priceInt * quantityInt;
+    int buga = isTaxed ? gongga / 10 : 0;
+    int total = gongga + buga;
+
+    QDateTime dt1 = date1.toDateTime();
+    QDate d1 = dt1.date();
+    QDateTime dt2 = date2.toDateTime();
+    QDate d2 = dt2.date();
+    QDateTime dt3 = date3.toDateTime();
+    QDate d3 = dt3.date();
+
+    QSqlQuery query(m_db);
+    query.prepare("UPDATE records SET tr_date = :trDate, customer = :supplier, item = :product, spec = :size, price = :price, amount = :quantity, supply_val = :gongga, tax_val = :buga, total_val = :total, pay_date1 = :d1, pay_amt1 = :a1, pay_date2 = :d2, pay_amt2 = :a2, pay_date3 = :d3, pay_amt3 = :a3 WHERE id = :id");
+    QDate trDateParsed = QDate::fromString(trDate.toString(), "yyyy-MM-dd");
+    query.bindValue(":trDate", trDateParsed.isValid() ? trDateParsed.toString("yyyy-MM-dd") : trDate.toString());
+    query.bindValue(":supplier", supplier.toString());
+    query.bindValue(":product", product.toString());
+    query.bindValue(":size", size.toString());
+    query.bindValue(":price", priceInt);
+    query.bindValue(":quantity", quantityInt);
+    query.bindValue(":gongga", gongga);
+    query.bindValue(":buga", buga);
+    query.bindValue(":total", total);
+    query.bindValue(":d1", d1);
+    query.bindValue(":d2", d2);
+    query.bindValue(":d3", d3);
+    query.bindValue(":a1", amount1);
+    query.bindValue(":a2", amount2);
+    query.bindValue(":a3", amount3);
+    query.bindValue(":id", row);
+
+    qInfo() << "내역 전체 수정 - id:" << row.toString() << "//" << trDate.toString() << "//" << supplier.toString() << "//" << product.toString();
+
+    if(!query.exec()) {
+        qDebug() << "수정 실패:" << query.lastError().text();
+    }
+}
+
 // 1. 거래처 삭제
 void SqlHandler::deleteDataSupplier(const QVariant &id) {
     if(!m_db.isOpen()) return;

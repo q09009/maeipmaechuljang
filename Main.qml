@@ -56,6 +56,13 @@ ApplicationWindow {
     property var ipgeumDate2
     property var ipgeumDate3
 
+    property string selectedDate: ""
+    property string selectedSupplier: ""
+    property string selectedProduct: ""
+    property string selectedSize: ""
+    property int selectedPrice: 0
+    property int selectedQuantity: 0
+
     property bool searchedMae: true
 
     Component.onCompleted: {
@@ -795,7 +802,7 @@ ApplicationWindow {
 
     Popup {
         id: ipgeumPopup
-        width: 420; height: 140
+        width: 540; height: 340
         anchors.centerIn: parent
         modal: true
         closePolicy: Popup.CloseOnPressOutside
@@ -803,35 +810,125 @@ ApplicationWindow {
         background: Rectangle { color: mainWindow.themeCard; border.color: mainWindow.themeBorder; radius: mainWindow.radiusLg }
         contentItem: ColumnLayout {
             spacing: 10
+
+            Text { text: qsTr("내역 수정"); font.pixelSize: 14; font.bold: true; color: mainWindow.themePrimary }
+
+            // 기본 정보 섹션
+            Rectangle {
+                Layout.fillWidth: true
+                height: 1
+                color: mainWindow.themeBorder
+            }
+            Text { text: qsTr("기본 정보"); font.pixelSize: 12; font.bold: true; color: mainWindow.themeMuted }
+            GridLayout {
+                columns: 4
+                columnSpacing: 8
+                rowSpacing: 6
+                Layout.fillWidth: true
+
+                Text { text: qsTr("거래날짜"); font.pixelSize: 12; color: mainWindow.themeMuted }
+                TextField {
+                    id: editTrDate
+                    placeholderText: qsTr("YYYY-MM-DD")
+                    text: mainWindow.selectedDate
+                    Layout.fillWidth: true
+                }
+                Text { text: qsTr("거래처"); font.pixelSize: 12; color: mainWindow.themeMuted }
+                ComboBox {
+                    id: editSupplierCombo
+                    model: mainWindow.supplierList
+                    Layout.fillWidth: true
+                    currentIndex: mainWindow.supplierList.indexOf(mainWindow.selectedSupplier)
+                    background: Rectangle { color: mainWindow.themeCard; border.color: mainWindow.themeBorder; radius: mainWindow.radiusSm; border.width: 1 }
+                }
+
+                Text { text: qsTr("품명"); font.pixelSize: 12; color: mainWindow.themeMuted }
+                ComboBox {
+                    id: editProductCombo
+                    model: mainWindow.productList
+                    textRole: "name"
+                    Layout.fillWidth: true
+                    currentIndex: {
+                        for (var i = 0; i < mainWindow.productList.length; i++) {
+                            if (mainWindow.productList[i].name === mainWindow.selectedProduct) return i;
+                        }
+                        return -1;
+                    }
+                    background: Rectangle { color: mainWindow.themeCard; border.color: mainWindow.themeBorder; radius: mainWindow.radiusSm; border.width: 1 }
+                }
+                Text { text: qsTr("규격"); font.pixelSize: 12; color: mainWindow.themeMuted }
+                TextField {
+                    id: editSize
+                    text: mainWindow.selectedSize
+                    Layout.fillWidth: true
+                }
+
+                Text { text: qsTr("단가"); font.pixelSize: 12; color: mainWindow.themeMuted }
+                TextField {
+                    id: editPrice
+                    text: mainWindow.selectedPrice
+                    Layout.fillWidth: true
+                    validator: IntValidator { bottom: 0 }
+                }
+                Text { text: qsTr("수량"); font.pixelSize: 12; color: mainWindow.themeMuted }
+                TextField {
+                    id: editQuantity
+                    text: mainWindow.selectedQuantity
+                    Layout.fillWidth: true
+                    validator: IntValidator { bottom: 0 }
+                }
+            }
+
+            // 입금 정보 섹션
+            Rectangle {
+                Layout.fillWidth: true
+                height: 1
+                color: mainWindow.themeBorder
+            }
+            Text { text: qsTr("입금 정보"); font.pixelSize: 12; font.bold: true; color: mainWindow.themeMuted }
             RowLayout {
                 spacing: 8
                 Text { text: qsTr("입금일1"); font.pixelSize: 12; color: mainWindow.themeMuted }
-                TextField { id: ipgeumDate1; placeholderText: qsTr("YYYY-MM-DD"); text:mainWindow.ipgeumDate1==="" ? "" : mainWindow.ipgeumDate1 ; Layout.fillWidth: true }
+                TextField { id: ipgeumDate1; placeholderText: qsTr("YYYY-MM-DD"); text: mainWindow.ipgeumDate1 === "" ? "" : mainWindow.ipgeumDate1; Layout.fillWidth: true }
                 Text { text: qsTr("입금액1"); font.pixelSize: 12; color: mainWindow.themeMuted }
-                TextField { id: ipgeumAmount1; text:mainWindow.ipgeumAmount1 ; Layout.fillWidth: true }
+                TextField { id: ipgeumAmount1; text: mainWindow.ipgeumAmount1; Layout.fillWidth: true }
             }
             RowLayout {
                 spacing: 8
                 Text { text: qsTr("입금일2"); font.pixelSize: 12; color: mainWindow.themeMuted }
-                TextField { id: ipgeumDate2; placeholderText: qsTr("YYYY-MM-DD"); text:mainWindow.ipgeumDate2==="" ? "" : mainWindow.ipgeumDate2 ; Layout.fillWidth: true }
+                TextField { id: ipgeumDate2; placeholderText: qsTr("YYYY-MM-DD"); text: mainWindow.ipgeumDate2 === "" ? "" : mainWindow.ipgeumDate2; Layout.fillWidth: true }
                 Text { text: qsTr("입금액2"); font.pixelSize: 12; color: mainWindow.themeMuted }
-                TextField { id: ipgeumAmount2; text:mainWindow.ipgeumAmount2 ; Layout.fillWidth: true }
+                TextField { id: ipgeumAmount2; text: mainWindow.ipgeumAmount2; Layout.fillWidth: true }
             }
             RowLayout {
                 spacing: 8
                 Text { text: qsTr("입금일3"); font.pixelSize: 12; color: mainWindow.themeMuted }
-                TextField { id: ipgeumDate3; placeholderText: qsTr("YYYY-MM-DD"); text:mainWindow.ipgeumDate3==="" ? "" : mainWindow.ipgeumDate3 ; Layout.fillWidth: true }
+                TextField { id: ipgeumDate3; placeholderText: qsTr("YYYY-MM-DD"); text: mainWindow.ipgeumDate3 === "" ? "" : mainWindow.ipgeumDate3; Layout.fillWidth: true }
                 Text { text: qsTr("입금액3"); font.pixelSize: 12; color: mainWindow.themeMuted }
-                TextField { id: ipgeumAmount3; text:mainWindow.ipgeumAmount3 ; Layout.fillWidth: true }
+                TextField { id: ipgeumAmount3; text: mainWindow.ipgeumAmount3; Layout.fillWidth: true }
             }
             RowLayout {
                 Layout.alignment: Qt.AlignRight
                 spacing: 8
                 Button {
-                    text: qsTr("입력")
-                    onClicked: { sqlData.writeRecordIp(ipgeumDate1.text, ipgeumAmount1.text, ipgeumDate2.text, ipgeumAmount2.text, ipgeumDate3.text, ipgeumAmount3.text, searchResultList.selectedRow); ipgeumPopup.close(); }
+                    text: qsTr("수정")
+                    onClicked: {
+                        sqlData.writeRecordFull(
+                            editTrDate.text,
+                            editSupplierCombo.currentText,
+                            editProductCombo.currentText,
+                            editSize.text,
+                            editPrice.text,
+                            editQuantity.text,
+                            ipgeumDate1.text, ipgeumAmount1.text,
+                            ipgeumDate2.text, ipgeumAmount2.text,
+                            ipgeumDate3.text, ipgeumAmount3.text,
+                            searchResultList.selectedRow
+                        );
+                        ipgeumPopup.close();
+                    }
                     background: Rectangle { color: parent.pressed ? mainWindow.themePrimaryHover : (parent.hovered ? mainWindow.themePrimaryHover : mainWindow.themePrimary); radius: mainWindow.radiusSm }
-                    contentItem: Text { text: "입력"; color: "white"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                    contentItem: Text { text: "수정"; color: "white"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                 }
                 Button {
                     text: qsTr("취소")
@@ -1512,6 +1609,12 @@ ApplicationWindow {
                                 mainWindow.ipgeumDate2 = modelData.ipD2;
                                 mainWindow.ipgeumAmount3 = modelData.ipA3;
                                 mainWindow.ipgeumDate3 = modelData.ipD3;
+                                mainWindow.selectedDate = modelData.date ? modelData.date : "";
+                                mainWindow.selectedSupplier = modelData.supplier ? modelData.supplier : "";
+                                mainWindow.selectedProduct = modelData.product ? modelData.product : "";
+                                mainWindow.selectedSize = modelData.size ? modelData.size : "";
+                                mainWindow.selectedPrice = modelData.price ? modelData.price : 0;
+                                mainWindow.selectedQuantity = modelData.quantity ? modelData.quantity : 0;
                                 console.log("ye")
                             }
                         }

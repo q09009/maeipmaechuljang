@@ -47,6 +47,9 @@ public:
     // record파일에 작성(입금일, 입금액) 3개
     Q_INVOKABLE void writeRecordIp(const QVariant &date1, const QVariant &amount1, const QVariant &date2, const QVariant &amount2, const QVariant &date3, const QVariant &amount3, const QVariant &row);
 
+    // record파일에 작성(기본정보 + 입금 정보 전체 수정)
+    Q_INVOKABLE void writeRecordFull(const QVariant &trDate, const QVariant &supplier, const QVariant &product, const QVariant &size, const QVariant &price, const QVariant &quantity, const QVariant &date1, const QVariant &amount1, const QVariant &date2, const QVariant &amount2, const QVariant &date3, const QVariant &amount3, const QVariant &row);
+
     // 일괄 입금처리에 사용될 함수, searchedResult에서 값 읽어서 추가만 해주자
     Q_INVOKABLE void writeRecordIlgwalIpgeum(const QVariant &date, const QVariant &amount);
 
