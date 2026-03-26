@@ -55,6 +55,7 @@ ApplicationWindow {
     property var ipgeumDate1
     property var ipgeumDate2
     property var ipgeumDate3
+    property var ipgeumEditDate: ""
 
     property bool searchedMae: true
 
@@ -795,14 +796,33 @@ ApplicationWindow {
 
     Popup {
         id: ipgeumPopup
-        width: 420; height: 140
+        width: 420; height: 180
         anchors.centerIn: parent
         modal: true
         closePolicy: Popup.CloseOnPressOutside
         padding: 16
         background: Rectangle { color: mainWindow.themeCard; border.color: mainWindow.themeBorder; radius: mainWindow.radiusLg }
+        onOpened: {
+            var d = mainWindow.ipgeumEditDate ? new Date(mainWindow.ipgeumEditDate) : new Date()
+            if (isNaN(d.getTime())) d = new Date()
+            ipgeumEditCalendarBtn.currentDate = d
+        }
         contentItem: ColumnLayout {
             spacing: 10
+            RowLayout {
+                spacing: 8
+                Text { text: qsTr("거래날짜"); font.pixelSize: 12; color: mainWindow.themeMuted }
+                Button {
+                    id: ipgeumEditCalendarBtn
+                    property date currentDate: new Date()
+                    text: qsTr(`${currentDate.getFullYear()}-${currentDate.getMonth()+1}-${currentDate.getDate()}`)
+                    onClicked: {
+                        sharedCalendarPopup.targetItem = ipgeumEditCalendarBtn
+                        sharedCalendarPopup.open()
+                    }
+                    background: Rectangle { color: parent.hovered ? "#f1f5f9" : mainWindow.themeCard; radius: mainWindow.radiusSm; border.color: mainWindow.themeBorder; border.width: 1 }
+                }
+            }
             RowLayout {
                 spacing: 8
                 Text { text: qsTr("입금일1"); font.pixelSize: 12; color: mainWindow.themeMuted }
@@ -829,7 +849,7 @@ ApplicationWindow {
                 spacing: 8
                 Button {
                     text: qsTr("입력")
-                    onClicked: { sqlData.writeRecordIp(ipgeumDate1.text, ipgeumAmount1.text, ipgeumDate2.text, ipgeumAmount2.text, ipgeumDate3.text, ipgeumAmount3.text, searchResultList.selectedRow); ipgeumPopup.close(); }
+                    onClicked: { sqlData.writeRecordIpFull(ipgeumEditCalendarBtn.currentDate, ipgeumDate1.text, ipgeumAmount1.text, ipgeumDate2.text, ipgeumAmount2.text, ipgeumDate3.text, ipgeumAmount3.text, searchResultList.selectedRow); ipgeumPopup.close(); }
                     background: Rectangle { color: parent.pressed ? mainWindow.themePrimaryHover : (parent.hovered ? mainWindow.themePrimaryHover : mainWindow.themePrimary); radius: mainWindow.radiusSm }
                     contentItem: Text { text: "입력"; color: "white"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                 }
@@ -1512,6 +1532,7 @@ ApplicationWindow {
                                 mainWindow.ipgeumDate2 = modelData.ipD2;
                                 mainWindow.ipgeumAmount3 = modelData.ipA3;
                                 mainWindow.ipgeumDate3 = modelData.ipD3;
+                                mainWindow.ipgeumEditDate = modelData.date;
                                 console.log("ye")
                             }
                         }
