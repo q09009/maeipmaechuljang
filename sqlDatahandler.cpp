@@ -42,6 +42,7 @@ void SqlHandler::initDB() {
 
     // 2. record DB 처리
     if (m_db.open()) {
+        qInfo() << "[DB_INIT] DB 연결 성공";
         // 쿼리를 만들 때 어떤 DB를 쓸지 꼭 알려줘야 합니다 (m_recorddb)
         QSqlQuery query(m_db);
         QString createTableQuery = R"(
@@ -61,7 +62,9 @@ void SqlHandler::initDB() {
         )";
 
         if (!query.exec(createTableQuery)) {
-            qDebug() << "레코드 테이블 생성 에러:" << query.lastError().text();
+            qCritical() << "[DB_INIT] [FAIL] 레코드 테이블 생성 오류 -" << query.lastError().text();
+        } else {
+            qInfo() << "[DB_INIT] [SUCCESS] 레코드 테이블 준비 완료";
         }
 
         // 1. 거래처 테이블 생성
@@ -73,7 +76,9 @@ void SqlHandler::initDB() {
             );
         )";
         if (!query.exec(createCustomerTable)) {
-            qDebug() << "거래처 테이블 생성 에러:" << query.lastError().text();
+            qCritical() << "[DB_INIT] [FAIL] 거래처 테이블 생성 오류 -" << query.lastError().text();
+        } else {
+            qInfo() << "[DB_INIT] [SUCCESS] 거래처 테이블 준비 완료";
         }
 
         // 2. 품목 테이블 생성 (규격, 단가 포함)
@@ -87,17 +92,20 @@ void SqlHandler::initDB() {
             );
         )";
         if (!query.exec(createItemTable)) {
-            qDebug() << "품목 테이블 생성 에러:" << query.lastError().text();
+            qCritical() << "[DB_INIT] [FAIL] 품목 테이블 생성 오류 -" << query.lastError().text();
+        } else {
+            qInfo() << "[DB_INIT] [SUCCESS] 품목 테이블 준비 완료";
         }
     }
     else {
-        qDebug() << "db 오픈 실패: " << m_db.lastError().text();
+        qCritical() << "[DB_INIT] [FAIL] DB 연결 실패 -" << m_db.lastError().text();
     }
 
     initData();
 }
 
 void SqlHandler::syncExcelToSql(const QList<QStringList>& dataList) {
+    qInfo() << "[SYNC_RECORD] [START] 전표 동기화 시작 - 총" << dataList.size() << "건";
     //혹시 모르니 백업 먼저 생성
     backupDB();
     if (!m_db.isOpen()) return;
@@ -141,14 +149,15 @@ void SqlHandler::syncExcelToSql(const QList<QStringList>& dataList) {
 
     // 4. 한 번에 저장 확정
     if (m_db.commit()) {
-        qInfo() << "총" << dataList.size() << "건의 데이터 동기화 완료!";
+        qInfo() << "[SYNC_RECORD] [COMPLETE] 전표 동기화 완료 - 총" << dataList.size() << "건";
     } else {
-        qDebug() << "커밋 실패:" << m_db.lastError().text();
+        qCritical() << "[SYNC_RECORD] [FAIL] 커밋 실패 -" << m_db.lastError().text();
         m_db.rollback(); // 실패 시 되돌리기
     }
 }
 
 void SqlHandler::syncExcelToSqlData(const QVariantList &customers, const QList<QStringList>& items) {
+    qInfo() << "[SYNC_DATA] [START] 거래처/품목 동기화 시작 - 거래처" << customers.size() << "건 / 품목" << items.size() << "건";
     if(!m_db.isOpen()) return;
 
     QSqlQuery deleteQuery(m_db);
@@ -181,10 +190,9 @@ void SqlHandler::syncExcelToSqlData(const QVariantList &customers, const QList<Q
     }
 
     if (m_db.commit()) {
-        qInfo() << "총" << customers.size() << "건의 거래처명 동기화 완료!";
-        qInfo() << "총" << items.size() << "건의 상품들 동기화 완료!";
+        qInfo() << "[SYNC_DATA] [COMPLETE] 거래처" << customers.size() << "건 / 품목" << items.size() << "건 동기화 완료";
     } else {
-        qDebug() << "커밋 실패:" << m_db.lastError().text();
+        qCritical() << "[SYNC_DATA] [FAIL] 커밋 실패 -" << m_db.lastError().text();
         m_db.rollback(); // 실패 시 되돌리기
     }
 
@@ -272,7 +280,7 @@ bool SqlHandler::readRecordRange(const QVariant &startDate, const QVariant &endD
     }
 
 
-    qInfo() << "레코드 탐색 시작" << startDate.toString() << "~" << endDate.toString() << "-" << gubun << "-" << supplier.toString() << "-" << product.toString();
+    qInfo() << "[READ_RANGE] [START] 조회 시작 -" << startDate.toString() << "~" << endDate.toString() << "/" << gubun << "/" << supplier.toString() << "/" << product.toString();
     QSqlQuery query(m_db);
     QString queryStr;
     QString sDate = startDate.toDate().toString("yyyy-MM-dd");      //이거를 해야 날짜 검색할때 이상/이하로 나옴
@@ -298,6 +306,7 @@ bool SqlHandler::readRecordRange(const QVariant &startDate, const QVariant &endD
     }
 
     calcSearchedSum(startDate, endDate, mae, supplier, product);
+    qInfo() << "[READ_RANGE] [COMPLETE] 조회 완료 -" << gaesoo << "건 검색됨";
     return true;
 }
 
@@ -345,13 +354,16 @@ void SqlHandler::calcSearchedSum(const QVariant &startDate, const QVariant &endD
         misuSum = query.value(6).toInt();
     }
     ipamountSum = hapgyeSum.toInt() - mijiSum.toInt() - misuSum.toInt();
+    qInfo() << "[CALC_SUM] [COMPLETE] 합계 계산 완료 - 수량합:" << amountSum.toInt()
+            << "/ 공급가:" << gonggaSum.toInt() << "/ 부가세:" << bugaSum.toInt()
+            << "/ 합계:" << hapgyeSum.toInt() << "/ 입금액:" << ipamountSum.toInt();
     //qDebug() << ipamountSum << "<< 이게 총 입금액";
 }
 
 void SqlHandler::monthTotalReady(const QVariant &year, const QVariant &gb, const QVariant &supplier, const QVariant &product) {
     if(!m_db.isOpen()) return;
 
-    qInfo() << "월별통계 조회 - " << year.toString() << "년" << gb.toString() << "-" << supplier.toString() << "-" << product.toString();
+    qInfo() << "[MONTH_STAT] [START] 월별통계 조회 -" << year.toString() << "년 /" << gb.toString() << "/" << supplier.toString() << "/" << product.toString();
 
     QString baseCondition = QString("WHERE strftime('%Y', tr_date) = '%1' AND gubun = '%2' ")
                                 .arg(year.toString(), gb.toString());
@@ -446,10 +458,12 @@ void SqlHandler::writeDataName(const QVariant &name) {
     query.prepare("INSERT INTO customer (name) VALUES (:name)");
     query.bindValue(":name", name.toString());
 
-    qInfo() << "거래처 이름 입력 - " << name.toString();
+    qInfo() << "[CUSTOMER_ADD] 거래처 추가 -" << name.toString();
 
     if(!query.exec()) {
-        qDebug() << "추가 실패:" << query.lastError().text();
+        qCritical() << "[CUSTOMER_ADD] [FAIL] 거래처 추가 실패 -" << query.lastError().text();
+    } else {
+        qInfo() << "[CUSTOMER_ADD] [SUCCESS] 거래처 추가 완료 -" << name.toString();
     }
 }
 
@@ -462,10 +476,12 @@ void SqlHandler::writeDataProduct(const QVariant &product, const QVariant &size,
     query.bindValue(":size", size.toString());
     query.bindValue(":price", price.toString());
 
-    qInfo() << "거래 품목 추가 - " << product.toString() << "-" << size.toString() << "-" << price.toString();
+    qInfo() << "[ITEM_ADD] 품목 추가 -" << product.toString() << "/" << size.toString() << "/" << price.toString();
 
     if(!query.exec()) {
-        qDebug() << "추가 실패:" << query.lastError().text();
+        qCritical() << "[ITEM_ADD] [FAIL] 품목 추가 실패 -" << query.lastError().text();
+    } else {
+        qInfo() << "[ITEM_ADD] [SUCCESS] 품목 추가 완료 -" << product.toString();
     }
 }
 
@@ -477,10 +493,12 @@ void SqlHandler::editDataSupplier(const QVariant &name, const QVariant &count) {
     query.bindValue(":name", name);
     query.bindValue(":id", count);
 
-    qInfo() << "거래처 이름 수정 - " << name.toString();
+    qInfo() << "[CUSTOMER_EDIT] 거래처 수정 -" << name.toString();
 
     if(!query.exec()) {
-        qDebug() << "수정 실패:" << query.lastError().text();
+        qCritical() << "[CUSTOMER_EDIT] [FAIL] 거래처 수정 실패 -" << query.lastError().text();
+    } else {
+        qInfo() << "[CUSTOMER_EDIT] [SUCCESS] 거래처 수정 완료 -" << name.toString();
     }
 }
 
@@ -494,10 +512,12 @@ void SqlHandler::editDataProduct(const QVariant &product, const QVariant &size, 
     query.bindValue(":price", price);
     query.bindValue(":id", count);
 
-    qInfo() << "거래 품목 수정 - " << product.toString() << "-" << size.toString() << "-" << price.toString();
+    qInfo() << "[ITEM_EDIT] 품목 수정 -" << product.toString() << "/" << size.toString() << "/" << price.toString();
 
     if(!query.exec()) {
-        qDebug() << "수정 실패:" << query.lastError().text();
+        qCritical() << "[ITEM_EDIT] [FAIL] 품목 수정 실패 -" << query.lastError().text();
+    } else {
+        qInfo() << "[ITEM_EDIT] [SUCCESS] 품목 수정 완료 -" << product.toString();
     }
 }
 
@@ -520,11 +540,16 @@ void SqlHandler::writeRecordIp(const QVariant &date1, const QVariant &amount1, c
     query.bindValue(":a3", amount3);
     query.bindValue(":id", row);
 
-    qInfo() << "입금내역 수정 - " << d1 << "-" << amount1.toString() << "//" << d2 << "-" << amount2.toString() << "//" << d3 << "-" << amount3.toString();
+    qInfo() << "[PAY_UPDATE] 입금내역 수정 - ID:" << row.toString()
+            << "/ 입금1:" << d1 << amount1.toString() << "원"
+            << "/ 입금2:" << d2 << amount2.toString() << "원"
+            << "/ 입금3:" << d3 << amount3.toString() << "원";
 
 
     if(!query.exec()) {
-        qDebug() << "추가 실패:" << query.lastError().text();
+        qCritical() << "[PAY_UPDATE] [FAIL] 입금내역 수정 실패 -" << query.lastError().text();
+    } else {
+        qInfo() << "[PAY_UPDATE] [SUCCESS] 입금내역 수정 완료 - ID:" << row.toString();
     }
 }
 
@@ -549,10 +574,16 @@ void SqlHandler::writeRecordIpFull(const QVariant &trDate, const QVariant &date1
     query.bindValue(":a3", amount3);
     query.bindValue(":id", row);
 
-    qInfo() << "입금내역 수정(거래날짜포함) - " << tr << "//" << d1 << "-" << amount1.toString() << "//" << d2 << "-" << amount2.toString() << "//" << d3 << "-" << amount3.toString();
+    qInfo() << "[PAY_UPDATE_FULL] 입금내역+거래날짜 수정 - ID:" << row.toString()
+            << "/ 거래날짜:" << tr
+            << "/ 입금1:" << d1 << amount1.toString() << "원"
+            << "/ 입금2:" << d2 << amount2.toString() << "원"
+            << "/ 입금3:" << d3 << amount3.toString() << "원";
 
     if(!query.exec()) {
-        qDebug() << "입금내역 수정 실패:" << query.lastError().text();
+        qCritical() << "[PAY_UPDATE_FULL] [FAIL] 입금내역 수정 실패 -" << query.lastError().text();
+    } else {
+        qInfo() << "[PAY_UPDATE_FULL] [SUCCESS] 입금내역+거래날짜 수정 완료 - ID:" << row.toString();
     }
 }
 
@@ -575,9 +606,9 @@ void SqlHandler::deleteDataSupplier(const QVariant &id) {
     query.bindValue(":id", id);
 
     if(query.exec()) {
-        qInfo() << "[SUCCESS] 거래처 삭제 완료 - (ID:" << id.toString() << ")" << customerName;
+        qInfo() << "[CUSTOMER_DEL] [SUCCESS] 거래처 삭제 완료 - (ID:" << id.toString() << ")" << customerName;
     } else {
-        qCritical() << "[FAIL] 거래처 삭제 실패 - (ID:" << id.toString() << ")" << customerName
+        qCritical() << "[CUSTOMER_DEL] [FAIL] 거래처 삭제 실패 - (ID:" << id.toString() << ")" << customerName
                     << "사유:" << query.lastError().text();
     }
 }
@@ -601,9 +632,9 @@ void SqlHandler::deleteDataProduct(const QVariant &id) {
     query.bindValue(":id", id);
 
     if(query.exec()) {
-        qInfo() << "[SUCCESS] 품목 삭제 완료 - (ID:" << id.toString() << ")" << itemName;
+        qInfo() << "[ITEM_DEL] [SUCCESS] 품목 삭제 완료 - (ID:" << id.toString() << ")" << itemName;
     } else {
-        qCritical() << "[FAIL] 품목 삭제 실패 - (ID:" << id.toString() << ")" << itemName
+        qCritical() << "[ITEM_DEL] [FAIL] 품목 삭제 실패 - (ID:" << id.toString() << ")" << itemName
                     << "사유:" << query.lastError().text();
     }
 }
@@ -631,9 +662,9 @@ void SqlHandler::deleteRecord(const QVariant &id) {
     query.bindValue(":id", id);
 
     if(query.exec()) {
-        qInfo() << "[SUCCESS] 전표 기록 삭제 완료 - (ID:" << id.toString() << ")" << recordInfo;
+        qInfo() << "[RECORD_DEL] [SUCCESS] 전표 기록 삭제 완료 - (ID:" << id.toString() << ")" << recordInfo;
     } else {
-        qCritical() << "[FAIL] 전표 기록 삭제 실패 - (ID:" << id.toString() << ")" << recordInfo
+        qCritical() << "[RECORD_DEL] [FAIL] 전표 기록 삭제 실패 - (ID:" << id.toString() << ")" << recordInfo
                     << "사유:" << query.lastError().text();
     }
 }
@@ -670,11 +701,16 @@ void SqlHandler::writeExcelRecord(const bool &mae, const QVariant &date, const Q
     query.bindValue(":buga", buga);
     query.bindValue(":hap", gongga+buga);
 
-    qInfo() << "데이터 추가 - " << gb << "//" << dateOnly << "//" << supplier << "//" << product << "//" << size << "//" << price << "//" << quantity << "//" << gongga << "//" << buga << "//" << gongga+buga;
+    qInfo() << "[RECORD_ADD] 전표 추가 -" << gb << "/" << dateOnly.toString()
+            << "/" << supplier.toString() << "/" << product.toString()
+            << "/" << size.toString() << "/ 단가:" << price.toInt()
+            << "/ 수량:" << quantity.toInt() << "/ 공급가:" << gongga << "/ 부가세:" << buga << "/ 합계:" << gongga+buga;
 
 
     if(!query.exec()) {
-        qDebug() << "추가 실패:" << query.lastError().text();
+        qCritical() << "[RECORD_ADD] [FAIL] 전표 추가 실패 -" << query.lastError().text();
+    } else {
+        qInfo() << "[RECORD_ADD] [SUCCESS] 전표 추가 완료 -" << gb << dateOnly.toString() << supplier.toString();
     }
 }
 
@@ -695,6 +731,7 @@ QList<QStringList> SqlHandler::readAllSqlRecord() {
             list.append(data);
         }
     }
+    qInfo() << "[READ_ALL] 전체 전표 조회 완료 -" << list.size() << "건";
     return list;
 }
 
@@ -714,6 +751,7 @@ QList<QStringList> SqlHandler::readAllSqlItem() {
             list.append(data);
         }
     }
+    qInfo() << "[READ_ALL] 전체 품목 조회 완료 -" << list.size() << "건";
     return list;
 }
 
@@ -731,6 +769,7 @@ QVariantList SqlHandler::readAllSqlCustomer() {
             list.append(data);
         }
     }
+    qInfo() << "[READ_ALL] 전체 거래처 조회 완료 -" << list.size() << "건";
     return list;
 }
 
@@ -767,7 +806,7 @@ void SqlHandler::writeRecordIlgwalIpgeum(const QVariant &date, const QVariant &a
         customerId = idQuery.value(0).toInt();
     }
 
-    qInfo() << customerName << "에게 " << remainingAmt << "원 일괄입금 시작";
+    qInfo() << "[BULK_PAY] [START] 일괄입금 시작 -" << customerName << "/ 처리금액:" << remainingAmt << "원";
 
     QSqlQuery query(m_db);
     m_db.transaction(); // 데이터 안전을 위해 트랜잭션 시작!
@@ -819,7 +858,7 @@ void SqlHandler::writeRecordIlgwalIpgeum(const QVariant &date, const QVariant &a
 
         queryStr += QString(" WHERE id = %1").arg(idList[i]);
         query.exec(queryStr);
-        qInfo() << "입금처리중... " << ip << "원 입금처리하고 잔액은 "<<remainingAmt << "원";
+        qInfo() << "[BULK_PAY] 입금처리중 -" << ip << "원 입금 / 잔액:" << remainingAmt << "원";
     }
 
 
@@ -873,6 +912,7 @@ QList<QStringList> SqlHandler::readMonthlySql(const QVariant &year, const QVaria
             list.append(data);
         }
     }
+    qInfo() << "[READ_MONTHLY] 월별 전표 조회 완료 -" << year.toInt() << "년" << month.toInt() << "월 /" << list.size() << "건";
     return list;
 }
 
