@@ -326,7 +326,7 @@ Window {
                     height: 25
                     spacing: -1
 
-                    ExcelCell { text: (index + 1) + "월"; Layout.preferredWidth: 80; align: "center"; color: "#f8fafc" }
+                    ExcelCell { text: formatNum(modelData.month) + "월"; Layout.preferredWidth: 80; align: "center"; color: "#f8fafc" }
                     ExcelCell { text: formatNum(modelData.amount); Layout.preferredWidth: 80 }
                     ExcelCell { text: formatNum(modelData.gongga); Layout.preferredWidth: 130 }
                     ExcelCell { text: formatNum(modelData.buga); Layout.preferredWidth: 100 }
@@ -352,7 +352,7 @@ Window {
                     height: 25
                     spacing: -1
 
-                    ExcelCell { text: (index + 1) + "/4분기"; Layout.preferredWidth: 80; align: "center"; color: "#f0f9ff" }
+                    ExcelCell { text: formatNum(modelData.num) + "/4분기"; Layout.preferredWidth: 80; align: "center"; color: "#f0f9ff" }
                     ExcelCell { text: formatNum(modelData.amount); Layout.preferredWidth: 80 }
                     ExcelCell { text: formatNum(modelData.gongga); Layout.preferredWidth: 130 }
                     ExcelCell { text: formatNum(modelData.buga); Layout.preferredWidth: 100 }

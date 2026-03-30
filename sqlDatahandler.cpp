@@ -386,20 +386,21 @@ void SqlHandler::calcMonthTotal(QString queryStr) {
     monthTotal.clear();
     QSqlQuery query(m_db);
     QStringList a;
-    a <<"num" <<"amount"<<"gongga"<<"buga"<<"hapgye"<<"miji"<<"misu";
+    a <<"month" <<"amount"<<"gongga"<<"buga"<<"hapgye"<<"miji"<<"misu";
 
     // 월별 합계 쿼리 조립
     QString sql = "SELECT strftime('%m', tr_date) as m, SUM(amount), SUM(supply_val), SUM(tax_val), SUM(total_val), SUM(unpaid_amt), SUM(receivable_amt)"
                   "FROM records " + queryStr + " GROUP BY m ORDER BY m;";
 
     if(query.exec(sql)) {
+
         while(query.next()) {
             QVariantMap map;
-
             for(int i=0;i<7;i++) {
                 map[a[i]] = query.value(i);
             }
             monthTotal.append(map);
+
         }
     }
 }
