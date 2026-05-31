@@ -3,6 +3,11 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QDebug>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QProcess>
 #include "excelDatahandler.h"
 #include "sqlDatahandler.h"
 #include "syncManager.h"
@@ -41,9 +46,40 @@ void myMessageOutput(QtMsgType type, const QMessageLogContext &context, const QS
     }
 }
 
+const QString CURRENT_VERSION = "v1.4.1";
+
 int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
+
+    QNetworkAccessManager manager;
+    QUrl updateUrl("https://api.github.com/repos/q09009/maeipmaechuljang/releases/latest");
+    QNetworkRequest request(updateUrl);
+    request.setHeader(QNetworkRequest::UserAgentHeader, "MyUpdater");
+
+    // 2. 업데이트 체크 (동기 방식처럼 보이지만 이벤트 루프 활용)
+    QNetworkReply *reply = manager.get(request);
+
+    // 업데이트 체크 완료될 때까지 잠시 대기하는 이벤트 루프
+    QEventLoop loop;
+    QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    loop.exec();
+
+    if (reply->error() == QNetworkReply::NoError) {
+        QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
+        QString latestVersion = doc.object().value("tag_name").toString();
+        //qDebug() << latestVersion;
+
+        if (latestVersion != CURRENT_VERSION) {
+            // 3. 업데이트 발견! 업데이터 실행하고 바로 종료
+            // (여기서 실제 다운로드 로직을 넣거나, 업데이터가 다운로드까지 하게 시키면 됨)
+            // if (QProcess::startDetached("./updater.exe")) {
+            //     return 0; // 메인 앱 실행 안 하고 바로 끝냄
+            // }
+            qDebug() << "업데이트 발견!";
+        }
+    }
+    reply->deleteLater();
 
     qInstallMessageHandler(myMessageOutput);
     qInfo() << "-------------------------------------------";

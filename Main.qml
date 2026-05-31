@@ -574,6 +574,9 @@ ApplicationWindow {
 
     Popup {
         id: infoPopup
+        property int major : 1
+        property int minor : 4
+        property int patch : 1
         width: 240; height: 120
         anchors.centerIn: parent
         modal: true
@@ -590,7 +593,7 @@ ApplicationWindow {
                 Layout.alignment: Qt.AlignLeft
             }
             Text {
-                text: qsTr("버전 1.4")
+                text: qsTr("버전 %1.%2.%3".arg(infoPopup.major).arg(infoPopup.minor).arg(infoPopup.patch))
                 font.pixelSize: 12
                 color: mainWindow.themeMuted
                 Layout.alignment: Qt.AlignLeft
