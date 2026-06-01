@@ -99,6 +99,102 @@ ApplicationWindow {
         }
     }
 
+    Popup {
+        id: updatePopup
+        anchors.centerIn: parent
+        width: 380  // 창 너비 축소 (440 -> 380)
+        height: 170 // 창 높이 대폭 축소 (240 -> 170)
+        modal: true
+        focus: true
+        visible: isUpdateAvailable
+        closePolicy: Popup.NoAutoClose
+
+        background: Rectangle {
+            color: "#ffffff"
+            radius: 8 // 라운딩도 살짝 깎아서 단정하게
+            border.color: "#cbd5e1"
+            border.width: 1
+        }
+
+        Column {
+            anchors.fill: parent
+            anchors.margins: 20
+            spacing: 16
+
+            // 1. 담백한 타이틀
+            Text {
+                text: "소프트웨어 업데이트 알림"
+                color: "#0f172a"
+                font.pixelSize: 16
+                font.bold: true
+            }
+
+            // 2. 군더더기 없는 핵심 문구 한 줄
+            Text {
+                width: parent.width
+                text: "새로운 버전(" + latestVersionStr + ")이 출시되었습니다. 업데이트하시겠습니까?"
+                color: "#334155"
+                font.pixelSize: 14
+                wrapMode: Text.WordWrap
+            }
+
+            // Spacer (버튼 배치용 여백)
+            //Item { width: 1; height: 4 }
+
+            // 3. 버튼 위치 스왑 ([지금 업데이트]가 왼쪽)
+            Row {
+                anchors.horizontalCenter: parent
+                spacing: 10
+
+                // [지금 업데이트] 버튼 (왼쪽으로 이동)
+                Button {
+                    id: acceptBtn
+                    text: "지금 업데이트"
+                    contentItem: Text {
+                        text: acceptBtn.text
+                        color: "#ffffff"
+                        font.pixelSize: 13
+                        font.bold: true
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    background: Rectangle {
+                        implicitWidth: 160
+                        implicitHeight: 36 // 버튼도 콤팩트하게 수정
+                        color: acceptBtn.hovered ? "#1d4ed8" : "#2563eb"
+                        radius: 6
+                    }
+                    onClicked: {
+                        updaterHelper.launchUpdater(CURRENT_VERSION)
+                    }
+                }
+
+                // [나중에 하기] 버튼 (오른쪽으로 이동)
+                Button {
+                    id: rejectBtn
+                    text: "나중에 하기"
+                    contentItem: Text {
+                        text: rejectBtn.text
+                        color: "#475569"
+                        font.pixelSize: 13
+                        font.bold: true
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    background: Rectangle {
+                        implicitWidth: 160
+                        implicitHeight: 36
+                        color: rejectBtn.hovered ? "#f1f5f9" : "#ffffff"
+                        radius: 6
+                        border.color: "#cbd5e1"
+                        border.width: 1
+                    }
+                    onClicked: updatePopup.close()
+                }
+            }
+        }
+    }
+
     // [Popups] - 변경 없음
 
     // Popup {

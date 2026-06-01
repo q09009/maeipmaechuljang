@@ -8,22 +8,26 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QProcess>
+#include <QList>
+#include <QDir>
+#include <QFile>
+#include <QDateTime>
+#include <QTextStream>
+#include <QFileInfo>
+
 #include "excelDatahandler.h"
 #include "sqlDatahandler.h"
 #include "syncManager.h"
-
-
-#include <QList>
-
 #include "xlsxdocument.h"
+#include "updaterHelper.h"
 
 using namespace QXlsx;
 
+// [로그 출력 함수] 기존 유지
 void myMessageOutput(QtMsgType type, const QMessageLogContext &context, const QString &msg) {
-
     if (msg.contains("The current style does not support") ||
         msg.contains("Cannot read property 'width' of null")) {
-        return; // 함수 바로 종료
+        return;
     }
 
     QDir().mkdir("logs");
@@ -37,7 +41,6 @@ void myMessageOutput(QtMsgType type, const QMessageLogContext &context, const QS
         QString time = QDateTime::currentDateTime().toString("hh:mm:ss.zzz");
         QString file = QFileInfo(context.file).fileName();
 
-        // 포맷: [시간] [종류] (파일명:라인) 메시지
         ts << QString("[%1] [%2] (%3:%4) - %5")
                   .arg(time, (type == QtInfoMsg ? "INFO" : "OTHER"), file)
                   .arg(context.line).arg(msg) << Qt::endl;
@@ -48,36 +51,54 @@ void myMessageOutput(QtMsgType type, const QMessageLogContext &context, const QS
 
 const QString CURRENT_VERSION = "v1.4.1";
 
+
 int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
 
+    // [깃허브 버전 체크 로직] 기존 유지
     QNetworkAccessManager manager;
     QUrl updateUrl("https://api.github.com/repos/q09009/maeipmaechuljang/releases/latest");
     QNetworkRequest request(updateUrl);
     request.setHeader(QNetworkRequest::UserAgentHeader, "MyUpdater");
 
-    // 2. 업데이트 체크 (동기 방식처럼 보이지만 이벤트 루프 활용)
-    QNetworkReply *reply = manager.get(request);
+    QString latestVersionStr = CURRENT_VERSION;
+    bool isUpdateAvailable = false;
 
-    // 업데이트 체크 완료될 때까지 잠시 대기하는 이벤트 루프
+    auto normalizeVersion = [](QString v) {
+        v = v.trimmed();
+        if (v.startsWith('v', Qt::CaseInsensitive)) v.remove(0, 1);
+        return v;
+    };
+
+    auto isNewerThanCurrent = [&](const QString &latest, const QString &current) {
+        const QString l = normalizeVersion(latest);
+        const QString c = normalizeVersion(current);
+        const QStringList lp = l.split('.');
+        const QStringList cp = c.split('.');
+        const int n = qMax(lp.size(), cp.size());
+
+        for (int i = 0; i < n; ++i) {
+            const int lv = (i < lp.size()) ? lp[i].toInt() : 0;
+            const int cv = (i < cp.size()) ? cp[i].toInt() : 0;
+            if (lv > cv) return true;
+            if (lv < cv) return false;
+        }
+        return false;
+    };
+
+    QNetworkReply *reply = manager.get(request);
     QEventLoop loop;
     QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
     loop.exec();
 
     if (reply->error() == QNetworkReply::NoError) {
         QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
-        QString latestVersion = doc.object().value("tag_name").toString();
-        //qDebug() << latestVersion;
+        latestVersionStr = doc.object().value("tag_name").toString().trimmed();
+        if (latestVersionStr.isEmpty())
+            latestVersionStr = CURRENT_VERSION;
 
-        if (latestVersion != CURRENT_VERSION) {
-            // 3. 업데이트 발견! 업데이터 실행하고 바로 종료
-            // (여기서 실제 다운로드 로직을 넣거나, 업데이터가 다운로드까지 하게 시키면 됨)
-            // if (QProcess::startDetached("./updater.exe")) {
-            //     return 0; // 메인 앱 실행 안 하고 바로 끝냄
-            // }
-            qDebug() << "업데이트 발견!";
-        }
+        isUpdateAvailable = isNewerThanCurrent(latestVersionStr, CURRENT_VERSION);
     }
     reply->deleteLater();
 
@@ -93,14 +114,20 @@ int main(int argc, char *argv[])
 
     QQmlApplicationEngine engine;
 
+    // 👑 꼬여있던 updaterHelperObj 쓰레기 코드는 제거하고 순정 헬퍼 인스턴스만 생성!
+    UpdaterHelper updaterHelper(&app);
+
+    // QML 컨텍스트 주입 (초깔끔)
     engine.rootContext()->setContextProperty("excelData", &excelhandler);
     engine.rootContext()->setContextProperty("sqlData", &sqlHandler);
     engine.rootContext()->setContextProperty("sync", &syncManager);
+    engine.rootContext()->setContextProperty("isUpdateAvailable", isUpdateAvailable);
+    engine.rootContext()->setContextProperty("latestVersionStr", latestVersionStr);
+    engine.rootContext()->setContextProperty("updaterHelper", &updaterHelper); // 여기에 정확히 바인딩됨
+    engine.rootContext()->setContextProperty("CURRENT_VERSION", CURRENT_VERSION);
 
     sqlHandler.cleanOldBackups();
     sqlHandler.cleanOldLogs();
-
-    const QUrl url(QStringLiteral("qrc:/main.qml"));
 
     QObject::connect(
         &engine,
@@ -108,9 +135,9 @@ int main(int argc, char *argv[])
         &app,
         []() { QCoreApplication::exit(-1); },
         Qt::QueuedConnection);
+
     engine.loadFromModule("maeipmaechuljang", "Main");
 
-    // 앱이 종료되기 직전에 sqlHandler의 backupDB를 실행해라!
     QObject::connect(&app, &QCoreApplication::aboutToQuit, [&sqlHandler]() {
         qInfo() << "앱 종료 감지: 최종 백업을 시작합니다.";
         sqlHandler.backupDB();
