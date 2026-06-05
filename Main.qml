@@ -86,6 +86,7 @@ ApplicationWindow {
             MenuItem { text: qsTr("마감엑셀 생성"); onTriggered: settlementPopup.open() }
             MenuItem { text: qsTr("엑셀 -> SQL"); onTriggered: recordEtoS.open() }
             MenuItem { text: qsTr("SQL -> 엑셀"); onTriggered: recordStoE.open() }
+
         }
         Menu {
             title: qsTr("통계")
@@ -95,6 +96,7 @@ ApplicationWindow {
         Menu {
             title: qsTr("도움말")
             //MenuItem { text: qsTr("최적화"); onTriggered: optimizationPopup.open() }
+            MenuItem { text: qsTr("설정"); onTriggered: configWindow.show() }
             MenuItem { text: qsTr("정보"); onTriggered: infoPopup.open() }
         }
     }
@@ -666,6 +668,10 @@ ApplicationWindow {
     }
     MonthTotal {
         id: monthStat
+    }
+    Configuration {
+        id: configWindow
+        //visible: false
     }
 
     Popup {
