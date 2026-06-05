@@ -2,18 +2,32 @@
 #define SQLDATAHANDLER_H
 
 #include <QObject>
-#include <QSqlDatabase>
-#include <QSqlQuery>
-#include <QDir>
-#include <QStandardPaths>
+#include <QString>
+
+#include <memory>
+
+#include "isqlstorage.h"
 
 
 
 class SqlHandler : public QObject {
     Q_OBJECT
 public:
+    enum class DbMode {
+        Sqlite,
+        Postgres
+    };
+    Q_ENUM(DbMode)
+
     explicit SqlHandler(QObject *parent = nullptr);
     ~SqlHandler();
+
+    Q_INVOKABLE void setDbMode(DbMode mode,
+                               const QString &host = QString(),
+                               int port = 5432,
+                               const QString &database = QString(),
+                               const QString &user = QString(),
+                               const QString &password = QString());
 
     Q_INVOKABLE void initDB();             // DB 연결 및 테이블 생성
     void syncExcelToSql(const QList<QStringList>& dataList);      //엑셀에서 sql로 옮겨오는 함수
@@ -88,38 +102,8 @@ public:
     void cleanOldLogs();
 
 private:
-    QSqlDatabase m_db;
-
-    //initDB할때 쓸 불러오는 함수들
-    void initData();
-
-    void calcSearchedSum(const QVariant &startDate, const QVariant &endDate, bool mae, const QVariant &supplier, const QVariant &product);
-
-    void calcMonthTotal(QString queryStr);
-    void calcBungiTotal(QString queryStr);
-    void calcBangiTotal(QString queryStr);
-
-    // C++ 내부에서 사용할 리스트 변수들
-    QVariantList dataName;
-    QVariantList dataProduct;
-    QList<int> dataBalance;
-
-    //검색결과들
-    QVariantList searchedResult;
-
-    QVariant amountSum;
-    QVariant gonggaSum;
-    QVariant bugaSum;
-    QVariant hapgyeSum;
-    QVariant ipamountSum;
-    QVariant misuSum;
-    QVariant mijiSum;
-    int gaesoo;
-
-    //월별통계용
-    QVariantList monthTotal;
-    QVariantList bungiTotal;
-    QVariantList bangiTotal;
+    DbMode m_mode = DbMode::Sqlite;
+    std::unique_ptr<ISqlStorage> m_storage;
 
 };
 

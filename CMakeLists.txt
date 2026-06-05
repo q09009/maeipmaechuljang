@@ -25,6 +25,11 @@ qt_add_qml_module(appmaeipmaechuljang
         QML_FILES qml/MonthTotal.qml
         SOURCES sqlDatahandler.h
         SOURCES sqlDatahandler.cpp
+        SOURCES isqlstorage.h
+        SOURCES sqlitestorage.h
+        SOURCES sqlitestorage.cpp
+        SOURCES psqlstorage.h
+        SOURCES psqlstorage.cpp
         SOURCES syncManager.h
         SOURCES syncManager.cpp
         SOURCES

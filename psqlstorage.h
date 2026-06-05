@@ -1,0 +1,116 @@
+#ifndef PSQLSTORAGE_H
+#define PSQLSTORAGE_H
+
+#include "isqlstorage.h"
+
+#include <QSqlDatabase>
+#include <QVariantList>
+
+struct PsqlConfig {
+    QString host = "localhost";
+    int port = 5432;
+    QString database = "maeipmaechuljang";
+    QString user = "postgres";
+    QString password;
+};
+
+class PsqlStorage : public ISqlStorage {
+public:
+    explicit PsqlStorage(const PsqlConfig &config = PsqlConfig(),
+                         const QString &connectionName = "psql_connection");
+    ~PsqlStorage() override;
+
+    void setConfig(const PsqlConfig &config);
+
+    void initDB() override;
+    void syncExcelToSql(const QList<QStringList> &dataList) override;
+    void syncExcelToSqlData(const QVariantList &customers, const QList<QStringList> &items) override;
+    QList<QStringList> readAllSqlRecord() override;
+    QList<QStringList> readAllSqlItem() override;
+    QVariantList readAllSqlCustomer() override;
+    void refreshData() override;
+
+    QVariantList getDataName() const override;
+    QVariantList getDataProduct() const override;
+
+    void writeDataName(const QVariant &name) override;
+    void writeDataProduct(const QVariant &product, const QVariant &size, const QVariant &price) override;
+
+    void writeExcelRecord(const bool &mae, const QVariant &date, const QVariant &supplier,
+                          const QVariant &product, const QVariant &size, const QVariant &price,
+                          const QVariant &quantity, const bool &tax) override;
+
+    void writeRecordIp(const QVariant &date1, const QVariant &amount1, const QVariant &date2,
+                       const QVariant &amount2, const QVariant &date3, const QVariant &amount3,
+                       const QVariant &row) override;
+    void writeRecordIpFull(const QVariant &trDate, const QVariant &date1, const QVariant &amount1,
+                           const QVariant &date2, const QVariant &amount2, const QVariant &date3,
+                           const QVariant &amount3, const QVariant &row) override;
+
+    void writeRecordIlgwalIpgeum(const QVariant &date, const QVariant &amount) override;
+
+    bool readRecordRange(const QVariant &startDate, const QVariant &endDate, bool mae,
+                         const QVariant &supplier, const QVariant &product) override;
+
+    QVariantList getSearchedResult() const override;
+    QVariant getAmountSum() const override;
+    QVariant getGonggaSum() const override;
+    QVariant getBugaSum() const override;
+    QVariant getHapgyeSum() const override;
+    QVariant getIpamountSum() const override;
+    QVariant getMisuSum() const override;
+    QVariant getMijiSum() const override;
+    int getGaesoo() const override;
+
+    void monthTotalReady(const QVariant &year, const QVariant &gb, const QVariant &supplier,
+                         const QVariant &product) override;
+    QVariantList getMonthTotal() const override;
+    QVariantList getBungiTotal() const override;
+    QVariantList getBangiTotal() const override;
+
+    void deleteRecord(const QVariant &row) override;
+    void editDataSupplier(const QVariant &name, const QVariant &count) override;
+    void editDataProduct(const QVariant &product, const QVariant &size, const QVariant &price,
+                         const QVariant &count) override;
+    void deleteDataSupplier(const QVariant &count) override;
+    void deleteDataProduct(const QVariant &count) override;
+
+    QList<QStringList> readMonthlySql(const QVariant &year, const QVariant &month) override;
+
+    bool backupDB() override;
+    void cleanOldBackups() override;
+    void cleanOldLogs() override;
+
+private:
+    void initData();
+    void calcSearchedSum(const QVariant &startDate, const QVariant &endDate, bool mae,
+                         const QVariant &supplier, const QVariant &product);
+    void calcMonthTotal(QString queryStr);
+    void calcBungiTotal(QString queryStr);
+    void calcBangiTotal(QString queryStr);
+
+    QString m_connectionName;
+    PsqlConfig m_config;
+    QSqlDatabase m_db;
+
+    QVariantList dataName;
+    QVariantList dataProduct;
+    QList<int> dataBalance;
+
+    QVariantList searchedResult;
+
+    QVariant amountSum;
+    QVariant gonggaSum;
+    QVariant bugaSum;
+    QVariant hapgyeSum;
+    QVariant ipamountSum;
+    QVariant misuSum;
+    QVariant mijiSum;
+    int gaesoo = 0;
+
+    QVariantList monthTotal;
+    QVariantList bungiTotal;
+    QVariantList bangiTotal;
+};
+
+#endif // PSQLSTORAGE_H
