@@ -15,6 +15,7 @@ class Settings:
     database_url: str
     api_key: str
     cors_origins: tuple[str, ...]
+    backup_dir: Path
     app_name: str = "Maeip Maechuljang API"
 
 
@@ -47,4 +48,10 @@ def get_settings() -> Settings:
     )
     if not api_key:
         raise RuntimeError("MAEIP_API_KEY environment variable is required")
-    return Settings(database_url=database_url, api_key=api_key, cors_origins=cors_origins)
+    backup_dir = Path(os.getenv("MAEIP_BACKUP_DIR", "/app/backups")).expanduser()
+    return Settings(
+        database_url=database_url,
+        api_key=api_key,
+        cors_origins=cors_origins,
+        backup_dir=backup_dir,
+    )

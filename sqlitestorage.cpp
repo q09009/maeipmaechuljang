@@ -1,5 +1,7 @@
 #include "sqlitestorage.h"
 
+#include "transfersnapshot.h"
+
 #include <QCoreApplication>
 #include <QDate>
 #include <QDateTime>
@@ -7,12 +9,40 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QJsonValue>
 #include <QMetaType>
 #include <QSqlError>
 #include <QSqlQuery>
+#include <QUuid>
 
-SqliteStorage::SqliteStorage(const QString &connectionName)
-    : m_connectionName(connectionName) {}
+namespace {
+QJsonValue nullableDateValue(const QVariant &value) {
+    const QString date = value.toString().trimmed();
+    return date.isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(date.left(10));
+}
+
+QJsonValue numericValue(const QVariant &value) {
+    return value.isNull() ? QJsonValue(0) : QJsonValue::fromVariant(value);
+}
+
+QString decimalValue(const QVariant &value) {
+    return value.isNull() ? QStringLiteral("0") : value.toString();
+}
+
+QVariant nullableDateVariant(const QJsonValue &value) {
+    if (value.isNull() || value.isUndefined() || value.toString().isEmpty())
+        return QVariant(QMetaType::fromType<QString>());
+    return value.toString();
+}
+} // namespace
+
+SqliteStorage::SqliteStorage(const QString &connectionName, const QString &databasePath)
+    : m_connectionName(connectionName),
+      m_databasePath(databasePath.isEmpty()
+                         ? QDir(QCoreApplication::applicationDirPath()).filePath("data/data.db")
+                         : QFileInfo(databasePath).absoluteFilePath()) {}
 
 SqliteStorage::~SqliteStorage() {
     if (m_db.isOpen()) {
@@ -26,19 +56,14 @@ SqliteStorage::~SqliteStorage() {
 }
 
 bool SqliteStorage::initDB() {
-    QString path = "data";
-    QDir dir(path);
-
-    if (!dir.exists()) {
-        dir.mkpath(".");
-    }
+    QDir().mkpath(QFileInfo(m_databasePath).absolutePath());
 
     if (QSqlDatabase::contains(m_connectionName)) {
         m_db = QSqlDatabase::database(m_connectionName);
     } else {
         m_db = QSqlDatabase::addDatabase("QSQLITE", m_connectionName);
     }
-    m_db.setDatabaseName(path + "/data.db");
+    m_db.setDatabaseName(m_databasePath);
 
     if (m_db.open()) {
         qInfo() << "[DB_INIT] DB 연결 성공";
@@ -869,21 +894,226 @@ QList<QStringList> SqliteStorage::readMonthlySql(const QVariant &year, const QVa
     return list;
 }
 
-bool SqliteStorage::backupDB() {
-    QString backupDir = QCoreApplication::applicationDirPath() + "/data/backups";
-    QDir().mkpath(backupDir);
+QJsonObject SqliteStorage::exportTransferSnapshot(QString *error) {
+    if (error)
+        error->clear();
+    if (!m_db.isOpen()) {
+        if (error)
+            *error = "SQLite 데이터베이스가 열려 있지 않습니다";
+        return {};
+    }
 
-    QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd_hhmmss");
-    QString sourceFile = QCoreApplication::applicationDirPath() + "/data/data.db";
-    QString destFile = backupDir + QString("/backup_%1.db").arg(timestamp);
+    QJsonArray customers;
+    QSqlQuery customerQuery(m_db);
+    if (!customerQuery.exec("SELECT name, balance FROM customer ORDER BY name, id")) {
+        if (error)
+            *error = customerQuery.lastError().text();
+        return {};
+    }
+    while (customerQuery.next()) {
+        customers.append(QJsonObject{
+            {"name", customerQuery.value(0).toString()},
+            {"balance", numericValue(customerQuery.value(1))},
+        });
+    }
 
-    if (QFile::copy(sourceFile, destFile)) {
-        qInfo() << "[BACKUP] 데이터베이스 백업 성공:" << destFile;
-        return true;
-    } else {
-        qCritical() << "[BACKUP] 백업 실패! 원인:" << QFile(sourceFile).errorString();
+    QJsonArray items;
+    QSqlQuery itemQuery(m_db);
+    if (!itemQuery.exec("SELECT item_name, spec, price FROM item ORDER BY item_name, spec, id")) {
+        if (error)
+            *error = itemQuery.lastError().text();
+        return {};
+    }
+    while (itemQuery.next()) {
+        items.append(QJsonObject{
+            {"item_name", itemQuery.value(0).toString()},
+            {"spec", itemQuery.value(1).toString()},
+            {"price", decimalValue(itemQuery.value(2))},
+        });
+    }
+
+    QJsonArray records;
+    QSqlQuery recordQuery(m_db);
+    if (!recordQuery.exec(
+            "SELECT gubun, tr_date, customer, item, spec, price, amount, supply_val, "
+            "tax_val, total_val, pay_date1, pay_amt1, pay_date2, pay_amt2, pay_date3, "
+            "pay_amt3, id FROM records ORDER BY tr_date, id")) {
+        if (error)
+            *error = recordQuery.lastError().text();
+        return {};
+    }
+    while (recordQuery.next()) {
+        records.append(QJsonObject{
+            {"source_id", numericValue(recordQuery.value(16))},
+            {"gubun", recordQuery.value(0).toString()},
+            {"tr_date", recordQuery.value(1).toString().left(10)},
+            {"customer", recordQuery.value(2).toString()},
+            {"item", recordQuery.value(3).toString()},
+            {"spec", recordQuery.value(4).toString()},
+            {"price", numericValue(recordQuery.value(5))},
+            {"amount", numericValue(recordQuery.value(6))},
+            {"supply_val", numericValue(recordQuery.value(7))},
+            {"tax_val", numericValue(recordQuery.value(8))},
+            {"total_val", numericValue(recordQuery.value(9))},
+            {"pay_date1", nullableDateValue(recordQuery.value(10))},
+            {"pay_amt1", numericValue(recordQuery.value(11))},
+            {"pay_date2", nullableDateValue(recordQuery.value(12))},
+            {"pay_amt2", numericValue(recordQuery.value(13))},
+            {"pay_date3", nullableDateValue(recordQuery.value(14))},
+            {"pay_amt3", numericValue(recordQuery.value(15))},
+        });
+    }
+    return QJsonObject{
+        {"version", 1},
+        {"customers", customers},
+        {"items", items},
+        {"records", records},
+    };
+}
+
+bool SqliteStorage::createBackupWithPrefix(const QString &prefix, QString *backupReference,
+                                           QString *error) {
+    if (backupReference)
+        backupReference->clear();
+    if (error)
+        error->clear();
+    if (!m_db.isOpen()) {
+        if (error)
+            *error = "SQLite 데이터베이스가 열려 있지 않습니다";
         return false;
     }
+
+    const QString backupDir = QFileInfo(m_databasePath).dir().filePath("backups");
+    if (!QDir().mkpath(backupDir)) {
+        if (error)
+            *error = "SQLite 백업 디렉터리를 만들 수 없습니다: " + backupDir;
+        return false;
+    }
+    const QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss_zzz");
+    const QString suffix = QUuid::createUuid().toString(QUuid::Id128).left(8);
+    const QString destination = QDir(backupDir).filePath(
+        QString("%1_%2_%3.db").arg(prefix, timestamp, suffix));
+
+    QSqlQuery checkpoint(m_db);
+    checkpoint.exec("PRAGMA wal_checkpoint(FULL)");
+    checkpoint.finish();
+    QString escaped = destination;
+    escaped.replace(QChar(0x27), QStringLiteral("''"));
+    QSqlQuery backupQuery(m_db);
+    if (!backupQuery.exec(QString("VACUUM INTO '%1'").arg(escaped))) {
+        if (error)
+            *error = backupQuery.lastError().text();
+        qCritical() << "[BACKUP] SQLite 백업 실패:" << backupQuery.lastError().text();
+        return false;
+    }
+    if (backupReference)
+        *backupReference = destination;
+    qInfo() << "[BACKUP] SQLite 백업 성공:" << destination;
+    return true;
+}
+
+bool SqliteStorage::createTransferBackup(QString *backupReference, QString *error) {
+    return createBackupWithPrefix("transfer_backup", backupReference, error);
+}
+
+bool SqliteStorage::replaceTransferSnapshot(const QJsonObject &snapshot,
+                                            QString *backupReference, QString *error) {
+    if (error)
+        error->clear();
+    QString validationError;
+    if (!TransferSnapshot::validate(snapshot, &validationError)) {
+        if (error)
+            *error = validationError;
+        return false;
+    }
+    if (!createTransferBackup(backupReference, error))
+        return false;
+    if (!m_db.transaction()) {
+        if (error)
+            *error = m_db.lastError().text();
+        return false;
+    }
+
+    auto rollbackWith = [&](const QString &message) {
+        m_db.rollback();
+        if (error)
+            *error = message;
+        return false;
+    };
+
+    QSqlQuery clearQuery(m_db);
+    for (const QString &statement : {
+             "DELETE FROM records", "DELETE FROM customer", "DELETE FROM item",
+             "DELETE FROM sqlite_sequence WHERE name IN ('records', 'customer', 'item')"}) {
+        if (!clearQuery.exec(statement))
+            return rollbackWith(clearQuery.lastError().text());
+    }
+
+    QSqlQuery customerQuery(m_db);
+    customerQuery.prepare("INSERT INTO customer (name, balance) VALUES (?, ?)");
+    for (const QJsonValue &value : snapshot.value("customers").toArray()) {
+        const QJsonObject row = value.toObject();
+        customerQuery.bindValue(0, row.value("name").toString());
+        customerQuery.bindValue(1, row.value("balance").toVariant().toLongLong());
+        if (!customerQuery.exec())
+            return rollbackWith(customerQuery.lastError().text());
+    }
+
+    QSqlQuery itemQuery(m_db);
+    itemQuery.prepare("INSERT INTO item (item_name, spec, price) VALUES (?, ?, ?)");
+    for (const QJsonValue &value : snapshot.value("items").toArray()) {
+        const QJsonObject row = value.toObject();
+        itemQuery.bindValue(0, row.value("item_name").toString());
+        itemQuery.bindValue(1, row.value("spec").toString());
+        itemQuery.bindValue(2, row.value("price").toVariant());
+        if (!itemQuery.exec())
+            return rollbackWith(itemQuery.lastError().text());
+    }
+
+    QSqlQuery recordInsert(m_db);
+    recordInsert.prepare(
+        "INSERT INTO records (gubun, tr_date, customer, item, spec, price, amount, "
+        "supply_val, tax_val, total_val, pay_date1, pay_amt1, pay_date2, pay_amt2, "
+        "pay_date3, pay_amt3) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    for (const QJsonValue &value : snapshot.value("records").toArray()) {
+        const QJsonObject row = value.toObject();
+        recordInsert.bindValue(0, row.value("gubun").toString());
+        recordInsert.bindValue(1, row.value("tr_date").toString());
+        recordInsert.bindValue(2, row.value("customer").toString());
+        recordInsert.bindValue(3, row.value("item").toString());
+        recordInsert.bindValue(4, row.value("spec").toString());
+        recordInsert.bindValue(5, row.value("price").toVariant().toLongLong());
+        recordInsert.bindValue(6, row.value("amount").toVariant().toLongLong());
+        recordInsert.bindValue(7, row.value("supply_val").toVariant().toLongLong());
+        recordInsert.bindValue(8, row.value("tax_val").toVariant().toLongLong());
+        recordInsert.bindValue(9, row.value("total_val").toVariant().toLongLong());
+        recordInsert.bindValue(10, nullableDateVariant(row.value("pay_date1")));
+        recordInsert.bindValue(11, row.value("pay_amt1").toVariant().toLongLong());
+        recordInsert.bindValue(12, nullableDateVariant(row.value("pay_date2")));
+        recordInsert.bindValue(13, row.value("pay_amt2").toVariant().toLongLong());
+        recordInsert.bindValue(14, nullableDateVariant(row.value("pay_date3")));
+        recordInsert.bindValue(15, row.value("pay_amt3").toVariant().toLongLong());
+        if (!recordInsert.exec())
+            return rollbackWith(recordInsert.lastError().text());
+    }
+
+    QString verifyError;
+    const QJsonObject actual = exportTransferSnapshot(&verifyError);
+    if (!verifyError.isEmpty())
+        return rollbackWith("SQLite 검증 데이터 읽기 실패: " + verifyError);
+    if (TransferSnapshot::digest(actual) != TransferSnapshot::digest(snapshot))
+        return rollbackWith("SQLite에 기록된 데이터가 원본 스냅샷과 일치하지 않습니다");
+    if (!m_db.commit())
+        return rollbackWith(m_db.lastError().text());
+
+    refreshData();
+    return true;
+}
+
+bool SqliteStorage::backupDB() {
+    QString backupReference;
+    QString error;
+    return createBackupWithPrefix("backup", &backupReference, &error);
 }
 
 void SqliteStorage::cleanOldBackups() {

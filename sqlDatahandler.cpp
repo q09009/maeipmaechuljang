@@ -1,11 +1,14 @@
 #include "sqlDatahandler.h"
 
 #include "apistorage.h"
+#include "datatransfer.h"
 #include "sqlitestorage.h"
 
 #include <QDebug>
+#include <QFutureWatcher>
 #include <QSettings>
 #include <QTimer>
+#include <QtConcurrent>
 
 SqlHandler::SqlHandler(QObject *parent) : QObject(parent) {
     QSettings settings("MaeipMaechuljang", "DB");
@@ -14,11 +17,12 @@ SqlHandler::SqlHandler(QObject *parent) : QObject(parent) {
     settings.remove("db/database");
     settings.remove("db/user");
     settings.remove("db/password");
+    m_baseUrl = settings.value("db/baseUrl", m_baseUrl).toString();
+    m_apiKey = settings.value("db/apiKey").toString();
     int savedMode = settings.value("db/mode", static_cast<int>(DbMode::Sqlite)).toInt();
 
     if (savedMode == static_cast<int>(DbMode::Api)) {
-        setDbMode(DbMode::Api, settings.value("db/baseUrl").toString(),
-                  settings.value("db/apiKey").toString());
+        setDbMode(DbMode::Api, m_baseUrl, m_apiKey);
     } else {
         // 더 이상 지원하지 않는 저장 모드 값은 SQLite로 복구한다.
         setDbMode(DbMode::Sqlite);
@@ -78,6 +82,40 @@ bool SqlHandler::initDB() {
 
 QString SqlHandler::lastError() const {
     return m_lastError;
+}
+
+void SqlHandler::startDataTransfer(TransferDirection direction) {
+    if (m_transferInProgress) {
+        emit dataTransferFinished(QVariantMap{
+            {"success", false},
+            {"message", "이미 데이터 이전 작업이 진행 중입니다"},
+        });
+        return;
+    }
+    if (m_baseUrl.trimmed().isEmpty() || m_apiKey.isEmpty()) {
+        emit dataTransferFinished(QVariantMap{
+            {"success", false},
+            {"message", "FastAPI 서버 주소와 API 키를 먼저 저장해주세요"},
+        });
+        return;
+    }
+
+    m_transferInProgress = true;
+    emit transferInProgressChanged();
+    const bool sqliteToApi = direction == TransferDirection::SqliteToApi;
+    const QString baseUrl = m_baseUrl;
+    const QString apiKey = m_apiKey;
+    auto *watcher = new QFutureWatcher<QVariantMap>(this);
+    connect(watcher, &QFutureWatcher<QVariantMap>::finished, this, [this, watcher]() {
+        const QVariantMap result = watcher->result();
+        watcher->deleteLater();
+        m_transferInProgress = false;
+        emit transferInProgressChanged();
+        emit dataTransferFinished(result);
+    });
+    watcher->setFuture(QtConcurrent::run([sqliteToApi, baseUrl, apiKey]() {
+        return DataTransfer::run(sqliteToApi, baseUrl, apiKey);
+    }));
 }
 
 void SqlHandler::syncExcelToSql(const QList<QStringList> &dataList) {

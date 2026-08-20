@@ -70,15 +70,21 @@ public:
 
     QList<QStringList> readMonthlySql(const QVariant &year, const QVariant &month) override;
 
+    QJsonObject exportTransferSnapshot(QString *error) override;
+    bool createTransferBackup(QString *backupReference, QString *error) override;
+    bool replaceTransferSnapshot(const QJsonObject &snapshot,
+                                 QString *backupReference, QString *error) override;
+
     bool backupDB() override;
     void cleanOldBackups() override;
     void cleanOldLogs() override;
 
 private:
     QByteArray syncRequest(const QByteArray &method, const QString &path,
-                           const QByteArray &body = QByteArray());
-    QByteArray syncGet(const QString &path);
-    QByteArray syncPost(const QString &path, const QByteArray &body);
+                           const QByteArray &body = QByteArray(), int timeoutMs = 15000);
+    QByteArray syncGet(const QString &path, int timeoutMs = 15000);
+    QByteArray syncPost(const QString &path, const QByteArray &body,
+                        int timeoutMs = 15000);
     QByteArray syncPut(const QString &path, const QByteArray &body);
     bool syncDelete(const QString &path);
 

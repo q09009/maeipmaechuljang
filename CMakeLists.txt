@@ -8,6 +8,8 @@ find_package(Qt6 REQUIRED COMPONENTS Quick Concurrent)
 find_package(Qt6 REQUIRED COMPONENTS Sql)
 find_package(Qt6 REQUIRED COMPONENTS Network)
 
+include(CTest)
+
 qt_standard_project_setup(REQUIRES 6.8)
 
 qt_add_executable(appmaeipmaechuljang
@@ -31,6 +33,10 @@ qt_add_qml_module(appmaeipmaechuljang
         SOURCES sqlitestorage.cpp
         SOURCES apistorage.h
         SOURCES apistorage.cpp
+        SOURCES datatransfer.h
+        SOURCES datatransfer.cpp
+        SOURCES transfersnapshot.h
+        SOURCES transfersnapshot.cpp
         SOURCES syncManager.h
         SOURCES syncManager.cpp
         SOURCES
@@ -66,3 +72,25 @@ install(TARGETS appmaeipmaechuljang
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+
+if(BUILD_TESTING)
+    find_package(Qt6 REQUIRED COMPONENTS Test)
+    qt_add_executable(data_transfer_tests
+        tests/data_transfer_tests.cpp
+        isqlstorage.h
+        sqlitestorage.h
+        sqlitestorage.cpp
+        transfersnapshot.h
+        transfersnapshot.cpp
+    )
+    target_include_directories(data_transfer_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_link_libraries(data_transfer_tests PRIVATE Qt6::Core Qt6::Sql Qt6::Test)
+    add_test(NAME data_transfer_tests COMMAND data_transfer_tests)
+    if(WIN32)
+        get_target_property(_qt_qmake_executable Qt6::qmake IMPORTED_LOCATION)
+        get_filename_component(_qt_bin_dir "${_qt_qmake_executable}" DIRECTORY)
+        get_filename_component(_compiler_bin_dir "${CMAKE_CXX_COMPILER}" DIRECTORY)
+        set_tests_properties(data_transfer_tests PROPERTIES ENVIRONMENT_MODIFICATION
+            "PATH=path_list_prepend:${_compiler_bin_dir};PATH=path_list_prepend:${_qt_bin_dir}")
+    endif()
+endif()

@@ -10,6 +10,11 @@ ApplicationWindow {
     height: 720
     title: "매입매출장"
 
+    onClosing: (close) => {
+        if (sqlData.transferInProgress)
+            close.accepted = false
+    }
+
     // [Theme] 세련된 디자인용 색상/스타일
     readonly property color themeBg: "#f4f6f9"
     readonly property color themeCard: "#ffffff"
@@ -60,6 +65,7 @@ ApplicationWindow {
     property bool searchedMae: true
 
     function reloadDatabaseUi() {
+        sqlData.refreshData()
         supplierList = sqlData.getDataName()
         productList = sqlData.getDataProduct()
         supplierSearchList = ["전체", ...supplierList]
@@ -712,6 +718,27 @@ ApplicationWindow {
     Configuration {
         id: configWindow
         onDatabaseChanged: mainWindow.reloadDatabaseUi()
+    }
+
+    Popup {
+        id: dataTransferBusyPopup
+        anchors.centerIn: parent
+        width: 360
+        height: 120
+        visible: sqlData.transferInProgress
+        modal: true
+        closePolicy: Popup.NoAutoClose
+
+        contentItem: RowLayout {
+            spacing: 14
+            BusyIndicator { running: true }
+            Text {
+                Layout.fillWidth: true
+                text: "데이터를 백업하고 이전한 뒤 검증하고 있습니다.\n완료될 때까지 프로그램을 종료하지 마세요."
+                wrapMode: Text.WordWrap
+                color: mainWindow.themeMuted
+            }
+        }
     }
 
     Popup {

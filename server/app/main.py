@@ -2,7 +2,7 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
-from .routers import customers, health, imports, items, records
+from .routers import customers, health, imports, items, records, transfers
 from .security import require_api_key
 
 
@@ -27,3 +27,4 @@ app.include_router(customers.router)
 app.include_router(items.router)
 app.include_router(records.router)
 app.include_router(imports.router)
+app.include_router(transfers.router)

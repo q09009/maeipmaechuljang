@@ -9,12 +9,17 @@
 #include <QJsonObject>
 #include <QNetworkReply>
 #include <QNetworkRequest>
+#include <QRegularExpression>
 #include <QUrlQuery>
 #include <utility>
 
 namespace {
 QString jsonDate(const QJsonValue &value) {
     return value.isNull() || value.isUndefined() ? QString() : value.toString();
+}
+
+double jsonDouble(const QJsonValue &value) {
+    return value.isString() ? value.toString().toDouble() : value.toDouble();
 }
 
 QVariantMap recordToUiMap(const QJsonObject &obj) {
@@ -49,11 +54,11 @@ ApiStorage::ApiStorage(const QString &baseUrl, const QString &apiKey)
 }
 
 QByteArray ApiStorage::syncRequest(const QByteArray &method, const QString &path,
-                                   const QByteArray &body) {
+                                   const QByteArray &body, int timeoutMs) {
     QNetworkRequest request(QUrl(m_baseUrl + path));
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
     request.setRawHeader("Accept", "application/json");
-    request.setTransferTimeout(15000);
+    request.setTransferTimeout(timeoutMs);
     if (!m_apiKey.isEmpty())
         request.setRawHeader("X-API-Key", m_apiKey.toUtf8());
 
@@ -93,12 +98,12 @@ QByteArray ApiStorage::syncRequest(const QByteArray &method, const QString &path
     return m_lastRequestOk ? response : QByteArray();
 }
 
-QByteArray ApiStorage::syncGet(const QString &path) {
-    return syncRequest("GET", path);
+QByteArray ApiStorage::syncGet(const QString &path, int timeoutMs) {
+    return syncRequest("GET", path, QByteArray(), timeoutMs);
 }
 
-QByteArray ApiStorage::syncPost(const QString &path, const QByteArray &body) {
-    return syncRequest("POST", path, body);
+QByteArray ApiStorage::syncPost(const QString &path, const QByteArray &body, int timeoutMs) {
+    return syncRequest("POST", path, body, timeoutMs);
 }
 
 QByteArray ApiStorage::syncPut(const QString &path, const QByteArray &body) {
@@ -164,7 +169,7 @@ QList<QStringList> ApiStorage::readAllSqlItem() {
     for (const QJsonValue &value : items) {
         const QJsonObject obj = value.toObject();
         result.append({obj["item_name"].toString(), obj["spec"].toString(),
-                       QString::number(obj["price"].toDouble())});
+                       QString::number(jsonDouble(obj["price"]))});
     }
     return result;
 }
@@ -195,7 +200,7 @@ void ApiStorage::refreshData() {
             {"id", obj["id"].toInt()},
             {"name", obj["item_name"].toString()},
             {"spec", obj["spec"].toString()},
-            {"price", obj["price"].toDouble()},
+            {"price", jsonDouble(obj["price"])},
         });
     }
 }
@@ -449,9 +454,82 @@ QList<QStringList> ApiStorage::readMonthlySql(const QVariant &year, const QVaria
     return result;
 }
 
-bool ApiStorage::backupDB() {
-    // PostgreSQL 백업은 FastAPI 서버에서 수행한다.
+QJsonObject ApiStorage::exportTransferSnapshot(QString *error) {
+    if (error)
+        error->clear();
+    const QByteArray response = syncGet("/transfers/snapshot", 300000);
+    if (!m_lastRequestOk) {
+        if (error)
+            *error = m_lastError;
+        return {};
+    }
+    const QJsonDocument document = QJsonDocument::fromJson(response);
+    if (!document.isObject()) {
+        m_lastError = "FastAPI가 올바른 데이터 스냅샷을 반환하지 않았습니다";
+        if (error)
+            *error = m_lastError;
+        return {};
+    }
+    return document.object();
+}
+
+bool ApiStorage::createTransferBackup(QString *backupReference, QString *error) {
+    if (backupReference)
+        backupReference->clear();
+    if (error)
+        error->clear();
+    const QByteArray response = syncPost("/transfers/backups", "{}", 30000);
+    if (!m_lastRequestOk) {
+        if (error)
+            *error = m_lastError;
+        return false;
+    }
+    const QJsonObject result = QJsonDocument::fromJson(response).object();
+    const QString backupFile = result.value("backup_file").toString();
+    if (backupFile.isEmpty()) {
+        if (error)
+            *error = "FastAPI 백업 파일 이름을 확인할 수 없습니다";
+        return false;
+    }
+    if (backupReference)
+        *backupReference = backupFile;
     return true;
+}
+
+bool ApiStorage::replaceTransferSnapshot(const QJsonObject &snapshot,
+                                         QString *backupReference, QString *error) {
+    if (backupReference)
+        backupReference->clear();
+    if (error)
+        error->clear();
+    const QByteArray response = syncPost(
+        "/transfers/replace", QJsonDocument(snapshot).toJson(QJsonDocument::Compact), 300000);
+    if (!m_lastRequestOk) {
+        const QRegularExpressionMatch match = QRegularExpression(
+            "backup_file=([^\\)\\s]+)").match(m_lastError);
+        if (backupReference && match.hasMatch())
+            *backupReference = match.captured(1);
+        if (error)
+            *error = m_lastError;
+        return false;
+    }
+    const QJsonObject result = QJsonDocument::fromJson(response).object();
+    const QString backupFile = result.value("backup_file").toString();
+    if (backupFile.isEmpty()) {
+        if (error)
+            *error = "FastAPI가 대상 백업 파일을 반환하지 않았습니다";
+        return false;
+    }
+    if (backupReference)
+        *backupReference = backupFile;
+    refreshData();
+    return true;
+}
+
+bool ApiStorage::backupDB() {
+    QString backupReference;
+    QString error;
+    return createTransferBackup(&backupReference, &error);
 }
 
 void ApiStorage::cleanOldBackups() {}

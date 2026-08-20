@@ -17,6 +17,8 @@ docker compose up --build -d
 
 FastAPI는 `http://127.0.0.1:8000`에서 열립니다. PostgreSQL의 5432 포트는 호스트에 공개하지 않고 Compose 내부에서만 사용합니다. Compose 프로젝트명은 `maeipmaechuljang`, 데이터 볼륨명은 `maeipmaechuljang_postgres_data`로 고정됩니다.
 
+PostgreSQL 애플리케이션 백업은 홈서버의 `server/backups` 디렉터리에 JSON으로 저장됩니다. 이 디렉터리는 컨테이너에 바인드 마운트되므로 컨테이너를 다시 만들더라도 유지됩니다.
+
 ## 직접 실행
 
 PostgreSQL이 이미 설치돼 있다면 `.env.example`을 `.env`로 복사하고 `DATABASE_URL` 줄의 주석을 푼 다음 `DATABASE_URL`과 `MAEIP_API_KEY`를 실제 값으로 변경해 실행할 수 있습니다.
@@ -43,5 +45,32 @@ Qt 설정 화면에는 API 서버 주소와 동일한 API 키를 입력합니다
 - `POST /records/bulk-payment`
 - `POST /imports/records`
 - `POST /imports/reference-data`
+- `GET /transfers/snapshot`
+- `POST /transfers/backups`
+- `POST /transfers/replace`
+- `POST /transfers/restore/{backup_file}`
 
 모든 엔드포인트는 `X-API-Key` 헤더가 필요합니다.
+
+## SQLite ↔ PostgreSQL 이전 안전장치
+
+Qt 설정 화면의 데이터 이전 기능은 대상 데이터베이스를 병합하지 않고 전체 교체합니다.
+
+1. 원본 데이터베이스 스냅샷 백업
+2. 대상 데이터베이스의 기존 데이터 백업
+3. 트랜잭션 안에서 거래처, 품목, 전표 전체 교체
+4. 거래처 잔액과 입금 내역을 포함한 전체 데이터 해시 검증
+5. 검증 성공 시에만 커밋
+6. Qt에서 대상을 다시 읽어 원본과 건수 및 해시를 한 번 더 비교
+
+예전 SQLite 파일에서 비어 있는 숫자 값은 기존 프로그램의 계산 방식과 동일하게 `0`으로 정규화합니다. 날짜 형식이 손상된 전표는 임의로 고치지 않고 전표 ID를 포함한 오류로 이전을 중단합니다.
+
+서버 백업을 복구해야 하는 경우 API 키와 백업 파일명을 사용합니다.
+
+```bash
+curl -X POST \
+  -H "X-API-Key: 실제_API키" \
+  "http://127.0.0.1:8000/transfers/restore/postgres_백업파일.json"
+```
+
+복구 직전의 PostgreSQL 상태도 다시 백업한 후 복구가 실행됩니다.

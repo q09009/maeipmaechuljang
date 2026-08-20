@@ -6,5 +6,6 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 tests/
+backups/
 .git/
 .gitignore

@@ -11,17 +11,66 @@ Window {
 
     signal databaseChanged()
 
+    onClosing: (close) => {
+        if (sqlData.transferInProgress)
+            close.accepted = false
+    }
+
     flags: Qt.Window | Qt.WindowTitleHint | Qt.WindowSystemMenuHint
          | Qt.WindowMinMaxButtonsHint | Qt.WindowCloseButtonHint
 
     Component.onCompleted: {
         var cfg = sqlData.getDbConfig()
+        baseUrlField.text = cfg.baseUrl || "http://127.0.0.1:8000"
+        apiKeyField.text = cfg.apiKey || ""
         if (cfg.mode === SqlHandler.Api) {
             externalModeRadio.checked = true
-            baseUrlField.text = cfg.baseUrl || "http://127.0.0.1:8000"
-            apiKeyField.text = cfg.apiKey || ""
         } else {
             localModeRadio.checked = true
+        }
+    }
+
+    Connections {
+        target: sqlData
+
+        function onDataTransferFinished(result) {
+            if (result.success) {
+                transferStatusText.text = "✅ " + result.message
+                        + "\n거래처 " + result.customers + "건 / 품목 " + result.items
+                        + "건 / 전표 " + result.records + "건"
+                        + "\n원본 백업: " + result.sourceBackup
+                        + "\n대상 백업: " + result.targetBackup
+                configWindow.databaseChanged()
+            } else {
+                transferStatusText.text = "❌ " + result.message
+                if (result.sourceBackup)
+                    transferStatusText.text += "\n원본 백업: " + result.sourceBackup
+                if (result.targetBackup)
+                    transferStatusText.text += "\n대상 백업: " + result.targetBackup
+            }
+        }
+    }
+
+    Dialog {
+        id: transferConfirmDialog
+        property int direction: SqlHandler.SqliteToApi
+        title: "데이터 전체 이전 확인"
+        modal: true
+        width: 420
+        x: (configWindow.width - width) / 2
+        y: (configWindow.height - height) / 2
+        standardButtons: Dialog.Ok | Dialog.Cancel
+
+        contentItem: Label {
+            text: transferConfirmDialog.direction === SqlHandler.SqliteToApi
+                  ? "PostgreSQL의 현재 데이터를 백업한 뒤 SQLite 데이터로 완전히 교체합니다.\n계속하시겠습니까?"
+                  : "SQLite의 현재 data.db를 백업한 뒤 PostgreSQL 데이터로 완전히 교체합니다.\n계속하시겠습니까?"
+            wrapMode: Text.WordWrap
+        }
+
+        onAccepted: {
+            transferStatusText.text = "데이터 백업 및 이전을 진행하고 있습니다..."
+            sqlData.startDataTransfer(transferConfirmDialog.direction)
         }
     }
 
@@ -76,6 +125,7 @@ Window {
 
                 Button {
                     text: "닫기"
+                    enabled: !sqlData.transferInProgress
                     Layout.fillWidth: true
                     height: 35
                     onClicked: configWindow.close()
@@ -189,6 +239,61 @@ Window {
                                 }
                             }
                         }
+                    }
+
+                    Rectangle { Layout.fillWidth: true; height: 1; color: "#e2e8f0" }
+
+                    Text {
+                        text: "SQLite ↔ PostgreSQL 전체 데이터 이전"
+                        font.pixelSize: 15
+                        font.bold: true
+                        color: "#0f172a"
+                    }
+                    Text {
+                        Layout.fillWidth: true
+                        text: "대상 데이터베이스의 거래처·품목·전표를 모두 교체합니다. 이전 전에 양쪽 백업을 만들고, 이전 후 건수와 전체 데이터 해시가 일치해야 성공 처리됩니다."
+                        wrapMode: Text.WordWrap
+                        font.pixelSize: 11
+                        color: "#b45309"
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        Button {
+                            text: "SQLite → PostgreSQL"
+                            enabled: !sqlData.transferInProgress
+                            onClicked: {
+                                transferConfirmDialog.direction = SqlHandler.SqliteToApi
+                                transferConfirmDialog.open()
+                            }
+                        }
+                        Button {
+                            text: "PostgreSQL → SQLite"
+                            enabled: !sqlData.transferInProgress
+                            onClicked: {
+                                transferConfirmDialog.direction = SqlHandler.ApiToSqlite
+                                transferConfirmDialog.open()
+                            }
+                        }
+                        BusyIndicator {
+                            running: sqlData.transferInProgress
+                            visible: running
+                            Layout.preferredWidth: 28
+                            Layout.preferredHeight: 28
+                        }
+                    }
+
+                    Text {
+                        id: transferStatusText
+                        Layout.fillWidth: true
+                        text: ""
+                        visible: text !== ""
+                        wrapMode: Text.WrapAnywhere
+                        font.pixelSize: 11
+                        color: text.startsWith("✅") ? "#16a34a"
+                              : text.startsWith("❌") ? "#dc2626" : "#475569"
                     }
                 }
             }

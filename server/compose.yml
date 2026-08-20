@@ -29,12 +29,15 @@ services:
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       MAEIP_API_KEY: ${MAEIP_API_KEY:?MAEIP_API_KEY must be set}
       MAEIP_CORS_ORIGINS: ${MAEIP_CORS_ORIGINS:-}
+      MAEIP_BACKUP_DIR: /app/backups
     command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
     depends_on:
       db:
         condition: service_healthy
     ports:
       - "8000:8000"
+    volumes:
+      - ./backups:/app/backups
 
 volumes:
   postgres_data:

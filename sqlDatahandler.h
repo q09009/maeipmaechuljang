@@ -10,12 +10,19 @@
 
 class SqlHandler : public QObject {
     Q_OBJECT
+    Q_PROPERTY(bool transferInProgress READ transferInProgress NOTIFY transferInProgressChanged)
 public:
     enum class DbMode {
         Sqlite = 0,
         Api = 2
     };
     Q_ENUM(DbMode)
+
+    enum class TransferDirection {
+        SqliteToApi = 0,
+        ApiToSqlite = 1
+    };
+    Q_ENUM(TransferDirection)
 
     explicit SqlHandler(QObject *parent = nullptr);
     ~SqlHandler();
@@ -29,6 +36,8 @@ public:
 
     Q_INVOKABLE bool initDB();
     Q_INVOKABLE QString lastError() const;
+    Q_INVOKABLE void startDataTransfer(TransferDirection direction);
+    bool transferInProgress() const { return m_transferInProgress; }
     void syncExcelToSql(const QList<QStringList> &dataList);
     void syncExcelToSqlData(const QVariantList &customers, const QList<QStringList> &items);
 
@@ -87,6 +96,10 @@ public:
     void cleanOldBackups();
     void cleanOldLogs();
 
+signals:
+    void transferInProgressChanged();
+    void dataTransferFinished(const QVariantMap &result);
+
 private:
     DbMode m_mode = DbMode::Sqlite;
     std::unique_ptr<ISqlStorage> m_storage;
@@ -94,6 +107,7 @@ private:
     QString m_lastError;
     QString m_baseUrl = "http://127.0.0.1:8000";
     QString m_apiKey;
+    bool m_transferInProgress = false;
 };
 
 #endif // SQLDATAHANDLER_H

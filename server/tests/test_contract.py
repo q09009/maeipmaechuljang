@@ -29,6 +29,10 @@ class ApiContractTests(unittest.TestCase):
                 "/records/monthly",
                 "/records/{record_id}/payment",
                 "/records/bulk-payment",
+                "/transfers/snapshot",
+                "/transfers/backups",
+                "/transfers/replace",
+                "/transfers/restore/{backup_file}",
             }.issubset(paths)
         )
 

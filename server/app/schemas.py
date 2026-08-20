@@ -132,3 +132,23 @@ class BulkPaymentRequest(BaseModel):
 
 class ImportResult(BaseModel):
     imported: int
+
+
+class TransferCustomer(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    balance: int = 0
+
+
+class TransferSnapshot(BaseModel):
+    version: Literal[1] = 1
+    customers: list[TransferCustomer]
+    items: list[ItemCreate]
+    records: list[RecordImportItem]
+
+
+class TransferResult(BaseModel):
+    backup_file: str
+    digest: str
+    customers: int
+    items: int
+    records: int

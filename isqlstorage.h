@@ -2,6 +2,7 @@
 #define ISQLSTORAGE_H
 
 #include <QList>
+#include <QJsonObject>
 #include <QStringList>
 #include <QVariant>
 
@@ -65,6 +66,11 @@ public:
     virtual void deleteDataProduct(const QVariant &count) = 0;
 
     virtual QList<QStringList> readMonthlySql(const QVariant &year, const QVariant &month) = 0;
+
+    virtual QJsonObject exportTransferSnapshot(QString *error) = 0;
+    virtual bool createTransferBackup(QString *backupReference, QString *error) = 0;
+    virtual bool replaceTransferSnapshot(const QJsonObject &snapshot,
+                                         QString *backupReference, QString *error) = 0;
 
     virtual bool backupDB() = 0;
     virtual void cleanOldBackups() = 0;

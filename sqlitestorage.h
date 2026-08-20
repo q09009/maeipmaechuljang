@@ -8,7 +8,8 @@
 
 class SqliteStorage : public ISqlStorage {
 public:
-    explicit SqliteStorage(const QString &connectionName = "data_connection");
+    explicit SqliteStorage(const QString &connectionName = "data_connection",
+                           const QString &databasePath = QString());
     ~SqliteStorage() override;
 
     bool initDB() override;
@@ -66,11 +67,18 @@ public:
 
     QList<QStringList> readMonthlySql(const QVariant &year, const QVariant &month) override;
 
+    QJsonObject exportTransferSnapshot(QString *error) override;
+    bool createTransferBackup(QString *backupReference, QString *error) override;
+    bool replaceTransferSnapshot(const QJsonObject &snapshot,
+                                 QString *backupReference, QString *error) override;
+
     bool backupDB() override;
     void cleanOldBackups() override;
     void cleanOldLogs() override;
 
 private:
+    bool createBackupWithPrefix(const QString &prefix, QString *backupReference,
+                                QString *error);
     void initData();
     void calcSearchedSum(const QVariant &startDate, const QVariant &endDate, bool mae,
                          const QVariant &supplier, const QVariant &product);
@@ -79,6 +87,7 @@ private:
     void calcBangiTotal(QString queryStr);
 
     QString m_connectionName;
+    QString m_databasePath;
     QSqlDatabase m_db;
 
     QVariantList dataName;
