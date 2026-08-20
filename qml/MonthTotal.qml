@@ -19,6 +19,14 @@ Window {
     readonly property color mtMuted: "#64748b"
     readonly property int mtRadius: 8
 
+    function resetDatabaseUi() {
+        mtroot.mtModel = []
+        mtroot.mtBungi = []
+        mtroot.mtBangi = []
+        mtSupplierComboBox.currentIndex = 0
+        mtProductComboBox.currentIndex = 0
+    }
+
     // 0값 처리를 위한 포맷 함수 (값이 없거나 0이면 "0" 반환)
     function formatNum(val) {
         return (Number(val) || 0).toLocaleString(Qt.locale(), 'f', 0);

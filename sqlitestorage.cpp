@@ -25,7 +25,7 @@ SqliteStorage::~SqliteStorage() {
     }
 }
 
-void SqliteStorage::initDB() {
+bool SqliteStorage::initDB() {
     QString path = "data";
     QDir dir(path);
 
@@ -94,9 +94,11 @@ void SqliteStorage::initDB() {
         }
     } else {
         qCritical() << "[DB_INIT] [FAIL] DB 연결 실패 -" << m_db.lastError().text();
+        return false;
     }
 
     initData();
+    return true;
 }
 
 void SqliteStorage::syncExcelToSql(const QList<QStringList> &dataList) {
@@ -320,7 +322,7 @@ void SqliteStorage::calcSearchedSum(const QVariant &startDate, const QVariant &e
     if (product != "전체") {
         queryStr += QString(" AND item = '%1'").arg(product.toString());
     }
-    query.exec(queryStr);
+
     if (query.exec(queryStr) && query.next()) {
         amountSum = query.value(0).toInt();
         gonggaSum = query.value(1).toInt();
@@ -570,7 +572,7 @@ void SqliteStorage::deleteDataSupplier(const QVariant &id) {
     QString customerName = "알 수 없음";
 
     QSqlQuery checkQuery(m_db);
-    checkQuery.prepare("SELECT customer FROM customer WHERE id = :id");
+    checkQuery.prepare("SELECT name FROM customer WHERE id = :id");
     checkQuery.bindValue(":id", id);
     if (checkQuery.exec() && checkQuery.next()) {
         customerName = checkQuery.value(0).toString();
@@ -594,7 +596,7 @@ void SqliteStorage::deleteDataProduct(const QVariant &id) {
     QString itemName = "알 수 없음";
 
     QSqlQuery checkQuery(m_db);
-    checkQuery.prepare("SELECT item FROM item WHERE id = :id");
+    checkQuery.prepare("SELECT item_name FROM item WHERE id = :id");
     checkQuery.bindValue(":id", id);
     if (checkQuery.exec() && checkQuery.next()) {
         itemName = checkQuery.value(0).toString();

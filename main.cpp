@@ -1,3 +1,4 @@
+#include <cstdio>
 #include <QGuiApplication>
 #include <QObject>
 #include <QQmlApplicationEngine>
@@ -23,12 +24,33 @@
 
 using namespace QXlsx;
 
-// [로그 출력 함수] 기존 유지
 void myMessageOutput(QtMsgType type, const QMessageLogContext &context, const QString &msg) {
     if (msg.contains("The current style does not support") ||
         msg.contains("Cannot read property 'width' of null")) {
         return;
     }
+
+    QString levelStr;
+    switch (type) {
+        case QtDebugMsg:    levelStr = "DEBUG";    break;
+        case QtInfoMsg:     levelStr = "INFO";     break;
+        case QtWarningMsg:  levelStr = "WARNING";  break;
+        case QtCriticalMsg: levelStr = "CRITICAL"; break;
+        case QtFatalMsg:    levelStr = "FATAL";    break;
+    }
+
+    QString time = QDateTime::currentDateTime().toString("hh:mm:ss.zzz");
+    QString file = QFileInfo(context.file ? context.file : "").fileName();
+    QString line = QString("[%1] [%2] (%3:%4) - %5")
+                       .arg(time, levelStr, file)
+                       .arg(context.line).arg(msg);
+
+    // Qt Creator Application Output에 출력
+    fprintf(stderr, "%s\n", qPrintable(line));
+    fflush(stderr);
+
+    // 파일에도 기록 (INFO 이상만)
+    if (type == QtDebugMsg) return;
 
     QDir().mkdir("logs");
     QString fileName = QString("logs/log_%1.txt").arg(QDateTime::currentDateTime().toString("yyyy-MM-dd"));
@@ -37,26 +59,17 @@ void myMessageOutput(QtMsgType type, const QMessageLogContext &context, const QS
     if (outFile.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
         QTextStream ts(&outFile);
         ts.setEncoding(QStringConverter::Utf8);
-
-        QString time = QDateTime::currentDateTime().toString("hh:mm:ss.zzz");
-        QString file = QFileInfo(context.file).fileName();
-
-        ts << QString("[%1] [%2] (%3:%4) - %5")
-                  .arg(time, (type == QtInfoMsg ? "INFO" : "OTHER"), file)
-                  .arg(context.line).arg(msg) << Qt::endl;
-
+        ts << line << Qt::endl;
         outFile.close();
     }
 }
 
 const QString CURRENT_VERSION = "v1.4.1";
 
-
 int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
 
-    // [깃허브 버전 체크 로직] 기존 유지
     QNetworkAccessManager manager;
     QUrl updateUrl("https://api.github.com/repos/q09009/maeipmaechuljang/releases/latest");
     QNetworkRequest request(updateUrl);
@@ -112,18 +125,19 @@ int main(int argc, char *argv[])
     SyncManager syncManager(&app);
     syncManager.setHandlers(&sqlHandler, &excelhandler);
 
-    QQmlApplicationEngine engine;
+    // ★ QML에서 DbMode enum 사용 가능하게 등록
+    qmlRegisterUncreatableType<SqlHandler>("com.maeip", 1, 0, "SqlHandler",
+                                           "SqlHandler is not creatable");
 
-    // 👑 꼬여있던 updaterHelperObj 쓰레기 코드는 제거하고 순정 헬퍼 인스턴스만 생성!
+    QQmlApplicationEngine engine;
     UpdaterHelper updaterHelper(&app);
 
-    // QML 컨텍스트 주입 (초깔끔)
     engine.rootContext()->setContextProperty("excelData", &excelhandler);
     engine.rootContext()->setContextProperty("sqlData", &sqlHandler);
     engine.rootContext()->setContextProperty("sync", &syncManager);
     engine.rootContext()->setContextProperty("isUpdateAvailable", isUpdateAvailable);
     engine.rootContext()->setContextProperty("latestVersionStr", latestVersionStr);
-    engine.rootContext()->setContextProperty("updaterHelper", &updaterHelper); // 여기에 정확히 바인딩됨
+    engine.rootContext()->setContextProperty("updaterHelper", &updaterHelper);
     engine.rootContext()->setContextProperty("CURRENT_VERSION", CURRENT_VERSION);
 
     sqlHandler.cleanOldBackups();

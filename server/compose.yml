@@ -1,0 +1,40 @@
+name: maeipmaechuljang
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-maeipmaechuljang}
+      POSTGRES_USER: ${POSTGRES_USER:-maeip}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-maeip} -d ${POSTGRES_DB:-maeipmaechuljang}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    restart: unless-stopped
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: ${POSTGRES_DB:-maeipmaechuljang}
+      DB_USER: ${POSTGRES_USER:-maeip}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      MAEIP_API_KEY: ${MAEIP_API_KEY:?MAEIP_API_KEY must be set}
+      MAEIP_CORS_ORIGINS: ${MAEIP_CORS_ORIGINS:-}
+    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+volumes:
+  postgres_data:

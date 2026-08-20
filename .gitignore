@@ -3,3 +3,10 @@ build/
 
 # Qt Creator가 생성하는 사용자 설정 파일 제외
 .qtcreator/
+
+# FastAPI / Python
+server/.env
+server/.venv/
+server/**/__pycache__/
+server/.pytest_cache/
+server/.coverage

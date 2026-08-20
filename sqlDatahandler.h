@@ -3,72 +3,62 @@
 
 #include <QObject>
 #include <QString>
-
+#include <QVariantMap>
 #include <memory>
 
 #include "isqlstorage.h"
-
-
 
 class SqlHandler : public QObject {
     Q_OBJECT
 public:
     enum class DbMode {
-        Sqlite,
-        Postgres
+        Sqlite = 0,
+        Api = 2
     };
     Q_ENUM(DbMode)
 
     explicit SqlHandler(QObject *parent = nullptr);
     ~SqlHandler();
 
-    Q_INVOKABLE void setDbMode(DbMode mode,
-                               const QString &host = QString(),
-                               int port = 5432,
-                               const QString &database = QString(),
-                               const QString &user = QString(),
-                               const QString &password = QString());
+    Q_INVOKABLE void setDbMode(DbMode mode, const QString &baseUrl = QString(),
+                               const QString &apiKey = QString());
 
-    Q_INVOKABLE void initDB();             // DB 연결 및 테이블 생성
-    void syncExcelToSql(const QList<QStringList>& dataList);      //엑셀에서 sql로 옮겨오는 함수
-    void syncExcelToSqlData(const QVariantList& customers, const QList<QStringList>& items);      //data 파일엑셀에서 sql로 옮겨오는함수
+    Q_INVOKABLE QVariantMap getDbConfig() const;
 
+
+
+    Q_INVOKABLE bool initDB();
+    Q_INVOKABLE QString lastError() const;
+    void syncExcelToSql(const QList<QStringList> &dataList);
+    void syncExcelToSqlData(const QVariantList &customers, const QList<QStringList> &items);
 
     QList<QStringList> readAllSqlRecord();
     QList<QStringList> readAllSqlItem();
     QVariantList readAllSqlCustomer();
 
-    //qt에서 항목 추가하거나 변경사항 있을때 불러줄 함수
     Q_INVOKABLE void refreshData();
-
-
-    // sql에서 읽은 업체명 리스트를 반환
     Q_INVOKABLE QVariantList getDataName() const;
-
-    // // sql에서 읽은 상품명 리스트를 반환
     Q_INVOKABLE QVariantList getDataProduct() const;
 
-    // QML에서 data sql에 업체명 추가
     Q_INVOKABLE void writeDataName(const QVariant &name);
-
-    // QML에서 data sql에 상품 추가
     Q_INVOKABLE void writeDataProduct(const QVariant &product, const QVariant &size, const QVariant &price);
 
+    Q_INVOKABLE void writeExcelRecord(const bool &mae, const QVariant &date, const QVariant &supplier,
+                                      const QVariant &product, const QVariant &size, const QVariant &price,
+                                      const QVariant &quantity, const bool &tax);
 
-    // record파일에 작성(미수금 제외)
-    Q_INVOKABLE void writeExcelRecord(const bool &mae, const QVariant &date, const QVariant &supplier, const QVariant &product, const QVariant &size, const QVariant &price, const QVariant &quantity, const bool &tax);
+    Q_INVOKABLE void writeRecordIp(const QVariant &date1, const QVariant &amount1, const QVariant &date2,
+                                   const QVariant &amount2, const QVariant &date3, const QVariant &amount3,
+                                   const QVariant &row);
+    Q_INVOKABLE void writeRecordIpFull(const QVariant &trDate, const QVariant &date1, const QVariant &amount1,
+                                       const QVariant &date2, const QVariant &amount2, const QVariant &date3,
+                                       const QVariant &amount3, const QVariant &row);
 
-    // record파일에 작성(입금일, 입금액) 3개
-    Q_INVOKABLE void writeRecordIp(const QVariant &date1, const QVariant &amount1, const QVariant &date2, const QVariant &amount2, const QVariant &date3, const QVariant &amount3, const QVariant &row);
-    Q_INVOKABLE void writeRecordIpFull(const QVariant &trDate, const QVariant &date1, const QVariant &amount1, const QVariant &date2, const QVariant &amount2, const QVariant &date3, const QVariant &amount3, const QVariant &row);
-
-    // 일괄 입금처리에 사용될 함수, searchedResult에서 값 읽어서 추가만 해주자
     Q_INVOKABLE void writeRecordIlgwalIpgeum(const QVariant &date, const QVariant &amount);
 
-    // record파일에서 불러옴
-    Q_INVOKABLE bool readRecordRange(const QVariant &startDate, const QVariant &endDate, bool mae, const QVariant &supplier, const QVariant &product);
+    Q_INVOKABLE bool readRecordRange(const QVariant &startDate, const QVariant &endDate, bool mae,
+                                     const QVariant &supplier, const QVariant &product);
     Q_INVOKABLE QVariantList getSearchedResult() const;
-    //Q_INVOKABLE QVariantList getSearchedSum() const;
     Q_INVOKABLE QVariant getAmountSum() const;
     Q_INVOKABLE QVariant getGonggaSum() const;
     Q_INVOKABLE QVariant getBugaSum() const;
@@ -78,26 +68,22 @@ public:
     Q_INVOKABLE QVariant getMijiSum() const;
     Q_INVOKABLE int getGaesoo() const;
 
-    //월별통계 구하는 함수
-    Q_INVOKABLE void monthTotalReady(const QVariant &year, const QVariant &gb, const QVariant &supplier, const QVariant &product);
+    Q_INVOKABLE void monthTotalReady(const QVariant &year, const QVariant &gb,
+                                     const QVariant &supplier, const QVariant &product);
     Q_INVOKABLE QVariantList getMonthTotal() const;
     Q_INVOKABLE QVariantList getBungiTotal() const;
     Q_INVOKABLE QVariantList getBangiTotal() const;
-    //선택된 레코드 삭제하는 함수
-    Q_INVOKABLE void deleteRecord(const QVariant &row);
 
-    //이미 있는 data 수정하는함수들, 업체명이나 상품 정보들
+    Q_INVOKABLE void deleteRecord(const QVariant &row);
     Q_INVOKABLE void editDataSupplier(const QVariant &name, const QVariant &count);
-    Q_INVOKABLE void editDataProduct(const QVariant &product, const QVariant &size, const QVariant &price, const QVariant &count);
+    Q_INVOKABLE void editDataProduct(const QVariant &product, const QVariant &size,
+                                     const QVariant &price, const QVariant &count);
     Q_INVOKABLE void deleteDataSupplier(const QVariant &count);
     Q_INVOKABLE void deleteDataProduct(const QVariant &count);
 
-    // 월별 마감 엑셀 만드는데 보내줄것들
     QList<QStringList> readMonthlySql(const QVariant &year, const QVariant &month);
 
-    // 백업 실행하는 함수
     bool backupDB();
-
     void cleanOldBackups();
     void cleanOldLogs();
 
@@ -105,6 +91,9 @@ private:
     DbMode m_mode = DbMode::Sqlite;
     std::unique_ptr<ISqlStorage> m_storage;
 
+    QString m_lastError;
+    QString m_baseUrl = "http://127.0.0.1:8000";
+    QString m_apiKey;
 };
 
 #endif // SQLDATAHANDLER_H

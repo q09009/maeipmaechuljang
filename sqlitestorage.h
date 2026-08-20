@@ -11,7 +11,7 @@ public:
     explicit SqliteStorage(const QString &connectionName = "data_connection");
     ~SqliteStorage() override;
 
-    void initDB() override;
+    bool initDB() override;
     void syncExcelToSql(const QList<QStringList> &dataList) override;
     void syncExcelToSqlData(const QVariantList &customers, const QList<QStringList> &items) override;
     QList<QStringList> readAllSqlRecord() override;

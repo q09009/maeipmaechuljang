@@ -1,13 +1,28 @@
 #include "sqlDatahandler.h"
 
-#include "psqlstorage.h"
+#include "apistorage.h"
 #include "sqlitestorage.h"
 
 #include <QDebug>
+#include <QSettings>
 #include <QTimer>
 
 SqlHandler::SqlHandler(QObject *parent) : QObject(parent) {
-    setDbMode(DbMode::Sqlite);
+    QSettings settings("MaeipMaechuljang", "DB");
+    settings.remove("db/host");
+    settings.remove("db/port");
+    settings.remove("db/database");
+    settings.remove("db/user");
+    settings.remove("db/password");
+    int savedMode = settings.value("db/mode", static_cast<int>(DbMode::Sqlite)).toInt();
+
+    if (savedMode == static_cast<int>(DbMode::Api)) {
+        setDbMode(DbMode::Api, settings.value("db/baseUrl").toString(),
+                  settings.value("db/apiKey").toString());
+    } else {
+        // 더 이상 지원하지 않는 저장 모드 값은 SQLite로 복구한다.
+        setDbMode(DbMode::Sqlite);
+    }
 
     QTimer *backupTimer = new QTimer(this);
     connect(backupTimer, &QTimer::timeout, this, &SqlHandler::backupDB);
@@ -18,42 +33,51 @@ SqlHandler::SqlHandler(QObject *parent) : QObject(parent) {
 
 SqlHandler::~SqlHandler() = default;
 
-void SqlHandler::setDbMode(DbMode mode, const QString &host, int port, const QString &database,
-                           const QString &user, const QString &password) {
-    if (mode == m_mode && m_storage) {
-        if (mode == DbMode::Postgres) {
-            auto *psql = dynamic_cast<PsqlStorage *>(m_storage.get());
-            if (psql) {
-                PsqlConfig config;
-                if (!host.isEmpty()) config.host = host;
-                if (port > 0) config.port = port;
-                if (!database.isEmpty()) config.database = database;
-                if (!user.isEmpty()) config.user = user;
-                config.password = password;
-                psql->setConfig(config);
-            }
-        }
-        return;
-    }
-
+void SqlHandler::setDbMode(DbMode mode, const QString &baseUrl, const QString &apiKey) {
     m_mode = mode;
-    if (mode == DbMode::Postgres) {
-        PsqlConfig config;
-        if (!host.isEmpty()) config.host = host;
-        if (port > 0) config.port = port;
-        if (!database.isEmpty()) config.database = database;
-        if (!user.isEmpty()) config.user = user;
-        config.password = password;
-        m_storage = std::make_unique<PsqlStorage>(config);
+    if (mode == DbMode::Api) {
+        m_baseUrl = baseUrl.isEmpty() ? m_baseUrl : baseUrl;
+        m_apiKey = apiKey;
+        m_storage = std::make_unique<ApiStorage>(m_baseUrl, m_apiKey);
+
+        QSettings settings("MaeipMaechuljang", "DB");
+        settings.setValue("db/mode",    static_cast<int>(DbMode::Api));
+        settings.setValue("db/baseUrl", m_baseUrl);
+        settings.setValue("db/apiKey",  m_apiKey);
     } else {
         m_storage = std::make_unique<SqliteStorage>();
+
+        QSettings settings("MaeipMaechuljang", "DB");
+        settings.setValue("db/mode", static_cast<int>(DbMode::Sqlite));
     }
 }
 
-void SqlHandler::initDB() {
+QVariantMap SqlHandler::getDbConfig() const {
+    return QVariantMap{
+        {"mode",     static_cast<int>(m_mode)},
+        {"baseUrl",  m_baseUrl},
+        {"apiKey",   m_apiKey},
+    };
+}
+
+bool SqlHandler::initDB() {
     if (m_storage) {
-        m_storage->initDB();
+        bool ok = m_storage->initDB();
+        if (!ok) {
+            if (auto *api = dynamic_cast<ApiStorage *>(m_storage.get()))
+                m_lastError = api->lastError();
+            else
+                m_lastError = "DB 초기화 실패";
+        } else {
+            m_lastError.clear();
+        }
+        return ok;
     }
+    return false;
+}
+
+QString SqlHandler::lastError() const {
+    return m_lastError;
 }
 
 void SqlHandler::syncExcelToSql(const QList<QStringList> &dataList) {

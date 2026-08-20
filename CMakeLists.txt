@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Quick Concurrent)
 find_package(Qt6 REQUIRED COMPONENTS Sql)
+find_package(Qt6 REQUIRED COMPONENTS Network)
 
 qt_standard_project_setup(REQUIRES 6.8)
 
@@ -28,8 +29,8 @@ qt_add_qml_module(appmaeipmaechuljang
         SOURCES isqlstorage.h
         SOURCES sqlitestorage.h
         SOURCES sqlitestorage.cpp
-        SOURCES psqlstorage.h
-        SOURCES psqlstorage.cpp
+        SOURCES apistorage.h
+        SOURCES apistorage.cpp
         SOURCES syncManager.h
         SOURCES syncManager.cpp
         SOURCES
@@ -56,6 +57,7 @@ target_link_libraries(appmaeipmaechuljang
         QXlsx::QXlsx
         Qt6::Concurrent
         Qt6::Sql
+        Qt6::Network
 )
 
 include(GNUInstallDirs)

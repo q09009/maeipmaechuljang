@@ -35,7 +35,7 @@ ApplicationWindow {
     property var supplierList: []
     property var productList: []
     property var supplierSearchList: []
-    property var productSearchList
+    property var productSearchList: []
 
 
     property int amountSum: 0
@@ -59,13 +59,53 @@ ApplicationWindow {
 
     property bool searchedMae: true
 
-    Component.onCompleted: {
-        sqlData.initDB();
-        supplierList = sqlData.getDataName();
-        productList = sqlData.getDataProduct();
+    function reloadDatabaseUi() {
+        supplierList = sqlData.getDataName()
+        productList = sqlData.getDataProduct()
         supplierSearchList = ["전체", ...supplierList]
         productSearchList = [{"name": "전체"}, ...productList]
 
+        combinedModel = []
+        readRows = []
+        amountSum = 0
+        gonggaSum = 0
+        bugaSum = 0
+        hapgyeSum = 0
+        ipamountSum = 0
+        misuSum = 0
+        mijiSum = 0
+        gaesoo = 0
+
+        searchResultList.selectedRow = 0
+        searchResultList.searchClicked = false
+        deleteAskPopup.row = 0
+        productEditPopup.row = 0
+
+        supplierComboBox.currentIndex = supplierList.length > 0 ? 0 : -1
+        productComboBox.currentIndex = productList.length > 0 ? 0 : -1
+        supplierEditComboBox.currentIndex = supplierList.length > 0 ? 0 : -1
+        supplierDeleteComboBox.currentIndex = supplierList.length > 0 ? 0 : -1
+        productEditComboBox.currentIndex = productList.length > 0 ? 0 : -1
+        productDeleteComboBox.currentIndex = productList.length > 0 ? 0 : -1
+        searchSupplierComboBox.currentIndex = 0
+        searchProductComboBox.currentIndex = 0
+
+        textAmount.text = "1"
+        taxornot.ta = true
+        mainWindow.ipgeumAmount1 = 0
+        mainWindow.ipgeumAmount2 = 0
+        mainWindow.ipgeumAmount3 = 0
+        mainWindow.ipgeumDate1 = ""
+        mainWindow.ipgeumDate2 = ""
+        mainWindow.ipgeumDate3 = ""
+        mainWindow.ipgeumEditDate = ""
+
+        monthStat.resetDatabaseUi()
+    }
+
+    Component.onCompleted: {
+        if (sqlData.initDB())
+            reloadDatabaseUi()
     }
 
     Component.onDestruction: {
@@ -671,7 +711,7 @@ ApplicationWindow {
     }
     Configuration {
         id: configWindow
-        //visible: false
+        onDatabaseChanged: mainWindow.reloadDatabaseUi()
     }
 
     Popup {

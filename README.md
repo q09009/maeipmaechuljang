@@ -27,6 +27,7 @@ Qt/QML 기반 데스크톱 애플리케이션입니다.
 
 - C++ (Qt 6.x + QML)
 - SQLite 데이터베이스
+- FastAPI + PostgreSQL 서버 모드
 - CMake 빌드 시스템
 - QXlsx (엑셀 처리)
 
@@ -45,3 +46,10 @@ mkdir build && cd build
 cmake ..
 cmake --build .
 ./maeipmaechuljang
+```
+
+## 🌐 FastAPI 서버 모드
+
+서버 모드에서는 Qt 앱이 PostgreSQL에 직접 접속하지 않고 FastAPI에 HTTP 요청을 보냅니다. PostgreSQL 접속정보와 SQL 실행은 FastAPI 서버에서만 관리합니다.
+
+설정 및 실행 방법은 [server/README.md](server/README.md)를 참고하세요. 기존 SQLite `data.db`는 서버 시작 과정에서 읽거나 변경하지 않습니다.

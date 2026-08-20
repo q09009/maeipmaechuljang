@@ -9,7 +9,7 @@ class ISqlStorage {
 public:
     virtual ~ISqlStorage() = default;
 
-    virtual void initDB() = 0;
+    virtual bool initDB() = 0;
     virtual void syncExcelToSql(const QList<QStringList> &dataList) = 0;
     virtual void syncExcelToSqlData(const QVariantList &customers, const QList<QStringList> &items) = 0;
 
