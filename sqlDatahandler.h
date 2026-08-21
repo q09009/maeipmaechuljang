@@ -2,6 +2,7 @@
 #define SQLDATAHANDLER_H
 
 #include <QObject>
+#include <QFuture>
 #include <QString>
 #include <QVariantMap>
 #include <memory>
@@ -10,7 +11,8 @@
 
 class SqlHandler : public QObject {
     Q_OBJECT
-    Q_PROPERTY(bool transferInProgress READ transferInProgress NOTIFY transferInProgressChanged)
+    Q_PROPERTY(bool databaseOperationInProgress READ databaseOperationInProgress
+               NOTIFY databaseOperationInProgressChanged)
 public:
     enum class DbMode {
         Sqlite = 0,
@@ -37,7 +39,8 @@ public:
     Q_INVOKABLE bool initDB();
     Q_INVOKABLE QString lastError() const;
     Q_INVOKABLE void startDataTransfer(TransferDirection direction);
-    bool transferInProgress() const { return m_transferInProgress; }
+    Q_INVOKABLE void startDatabaseReset(DbMode targetMode);
+    bool databaseOperationInProgress() const { return m_databaseOperationInProgress; }
     void syncExcelToSql(const QList<QStringList> &dataList);
     void syncExcelToSqlData(const QVariantList &customers, const QList<QStringList> &items);
 
@@ -97,8 +100,8 @@ public:
     void cleanOldLogs();
 
 signals:
-    void transferInProgressChanged();
-    void dataTransferFinished(const QVariantMap &result);
+    void databaseOperationInProgressChanged();
+    void databaseOperationFinished(const QVariantMap &result);
 
 private:
     DbMode m_mode = DbMode::Sqlite;
@@ -107,7 +110,9 @@ private:
     QString m_lastError;
     QString m_baseUrl = "http://127.0.0.1:8000";
     QString m_apiKey;
-    bool m_transferInProgress = false;
+    bool m_databaseOperationInProgress = false;
+
+    void watchDatabaseOperation(QFuture<QVariantMap> future);
 };
 
 #endif // SQLDATAHANDLER_H

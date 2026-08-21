@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import com.maeip 1.0
 import "./qml"
 
 ApplicationWindow {
@@ -11,7 +12,7 @@ ApplicationWindow {
     title: "매입매출장"
 
     onClosing: (close) => {
-        if (sqlData.transferInProgress)
+        if (sqlData.databaseOperationInProgress)
             close.accepted = false
     }
 
@@ -132,6 +133,40 @@ ApplicationWindow {
             MenuItem { text: qsTr("마감엑셀 생성"); onTriggered: settlementPopup.open() }
             MenuItem { text: qsTr("엑셀 -> SQL"); onTriggered: recordEtoS.open() }
             MenuItem { text: qsTr("SQL -> 엑셀"); onTriggered: recordStoE.open() }
+            MenuSeparator { }
+            MenuItem {
+                text: qsTr("SQLite → PostgreSQL 전체 이전...")
+                enabled: !sqlData.databaseOperationInProgress
+                onTriggered: {
+                    transferConfirmPopup.direction = SqlHandler.SqliteToApi
+                    transferConfirmPopup.open()
+                }
+            }
+            MenuItem {
+                text: qsTr("PostgreSQL → SQLite 전체 이전...")
+                enabled: !sqlData.databaseOperationInProgress
+                onTriggered: {
+                    transferConfirmPopup.direction = SqlHandler.ApiToSqlite
+                    transferConfirmPopup.open()
+                }
+            }
+            MenuSeparator { }
+            MenuItem {
+                text: qsTr("PostgreSQL 데이터 초기화...")
+                enabled: !sqlData.databaseOperationInProgress
+                onTriggered: {
+                    resetConfirmPopup.targetMode = SqlHandler.Api
+                    resetConfirmPopup.open()
+                }
+            }
+            MenuItem {
+                text: qsTr("SQLite 데이터 초기화...")
+                enabled: !sqlData.databaseOperationInProgress
+                onTriggered: {
+                    resetConfirmPopup.targetMode = SqlHandler.Sqlite
+                    resetConfirmPopup.open()
+                }
+            }
 
         }
         Menu {
@@ -720,12 +755,149 @@ ApplicationWindow {
         onDatabaseChanged: mainWindow.reloadDatabaseUi()
     }
 
+    Connections {
+        target: sqlData
+
+        function onDatabaseOperationFinished(result) {
+            var message = (result.success ? "✅ " : "❌ ") + result.message
+            if (result.customers !== undefined) {
+                message += "\n거래처 " + result.customers + "건 / 품목 " + result.items
+                        + "건 / 전표 " + result.records + "건"
+            }
+            if (result.sourceBackup)
+                message += "\n원본 백업: " + result.sourceBackup
+            if (result.targetBackup)
+                message += "\n대상 백업: " + result.targetBackup
+            databaseOperationResultPopup.message = message
+            if (result.success)
+                mainWindow.reloadDatabaseUi()
+            databaseOperationResultPopup.open()
+        }
+    }
+
+    Popup {
+        id: transferConfirmPopup
+        property int direction: SqlHandler.SqliteToApi
+        anchors.centerIn: parent
+        width: 480
+        height: 230
+        modal: true
+        focus: true
+        closePolicy: Popup.CloseOnEscape
+        padding: 22
+        background: Rectangle {
+            color: mainWindow.themeCard
+            border.color: mainWindow.themeBorder
+            radius: mainWindow.radiusLg
+        }
+
+        contentItem: ColumnLayout {
+            spacing: 14
+            Text {
+                text: "데이터 전체 이전 확인"
+                font.pixelSize: 17
+                font.bold: true
+                color: "#0f172a"
+            }
+            Text {
+                Layout.fillWidth: true
+                text: transferConfirmPopup.direction === SqlHandler.SqliteToApi
+                      ? "PostgreSQL의 현재 데이터를 백업한 뒤 SQLite 데이터로 완전히 교체합니다."
+                      : "SQLite의 현재 data.db를 백업한 뒤 PostgreSQL 데이터로 완전히 교체합니다."
+                wrapMode: Text.WordWrap
+                color: mainWindow.themeMuted
+            }
+            Text {
+                Layout.fillWidth: true
+                text: "이전 후 건수와 전체 데이터가 일치하는지 검증한 경우에만 성공 처리합니다."
+                wrapMode: Text.WordWrap
+                color: "#b45309"
+                font.pixelSize: 12
+            }
+            Item { Layout.fillHeight: true }
+            RowLayout {
+                Layout.alignment: Qt.AlignRight
+                Button { text: "취소"; onClicked: transferConfirmPopup.close() }
+                Button {
+                    text: "백업 후 이전"
+                    onClicked: {
+                        var selectedDirection = transferConfirmPopup.direction
+                        transferConfirmPopup.close()
+                        sqlData.startDataTransfer(selectedDirection)
+                    }
+                }
+            }
+        }
+    }
+
+    Popup {
+        id: resetConfirmPopup
+        property int targetMode: SqlHandler.Api
+        anchors.centerIn: parent
+        width: 500
+        height: 285
+        modal: true
+        focus: true
+        closePolicy: Popup.CloseOnEscape
+        padding: 22
+        onOpened: resetConfirmationText.text = ""
+        background: Rectangle {
+            color: mainWindow.themeCard
+            border.color: mainWindow.themeDanger
+            radius: mainWindow.radiusLg
+        }
+
+        contentItem: ColumnLayout {
+            spacing: 12
+            Text {
+                text: resetConfirmPopup.targetMode === SqlHandler.Api
+                      ? "PostgreSQL 데이터 초기화" : "SQLite 데이터 초기화"
+                font.pixelSize: 17
+                font.bold: true
+                color: mainWindow.themeDanger
+            }
+            Text {
+                Layout.fillWidth: true
+                text: resetConfirmPopup.targetMode === SqlHandler.Api
+                      ? "홈서버 PostgreSQL의 거래처·품목·전표를 모두 삭제합니다. 삭제 직전에 서버 백업을 만들고, 완료 후 0건인지 검증합니다."
+                      : "현재 로컬 data.db의 거래처·품목·전표를 모두 삭제합니다. 삭제 직전에 별도 백업 파일을 만들고, 완료 후 0건인지 검증합니다."
+                wrapMode: Text.WordWrap
+                color: mainWindow.themeMuted
+            }
+            Text {
+                text: "계속하려면 아래에 ‘초기화’를 입력하세요."
+                color: "#0f172a"
+                font.bold: true
+            }
+            TextField {
+                id: resetConfirmationText
+                Layout.fillWidth: true
+                placeholderText: "초기화"
+                selectByMouse: true
+            }
+            Item { Layout.fillHeight: true }
+            RowLayout {
+                Layout.alignment: Qt.AlignRight
+                Button { text: "취소"; onClicked: resetConfirmPopup.close() }
+                Button {
+                    text: "백업 후 초기화"
+                    enabled: resetConfirmationText.text === "초기화"
+                    onClicked: {
+                        var selectedMode = resetConfirmPopup.targetMode
+                        resetConfirmPopup.close()
+                        sqlData.startDatabaseReset(selectedMode)
+                    }
+                }
+            }
+        }
+    }
+
     Popup {
         id: dataTransferBusyPopup
         anchors.centerIn: parent
         width: 360
         height: 120
-        visible: sqlData.transferInProgress
+        visible: sqlData.databaseOperationInProgress
         modal: true
         closePolicy: Popup.NoAutoClose
 
@@ -734,9 +906,50 @@ ApplicationWindow {
             BusyIndicator { running: true }
             Text {
                 Layout.fillWidth: true
-                text: "데이터를 백업하고 이전한 뒤 검증하고 있습니다.\n완료될 때까지 프로그램을 종료하지 마세요."
+                text: "데이터를 백업하고 작업 결과를 검증하고 있습니다.\n완료될 때까지 프로그램을 종료하지 마세요."
                 wrapMode: Text.WordWrap
                 color: mainWindow.themeMuted
+            }
+        }
+    }
+
+    Popup {
+        id: databaseOperationResultPopup
+        property string message: ""
+        anchors.centerIn: parent
+        width: 540
+        height: 230
+        modal: true
+        focus: true
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        padding: 22
+        background: Rectangle {
+            color: mainWindow.themeCard
+            border.color: databaseOperationResultPopup.message.startsWith("✅")
+                          ? mainWindow.themeSuccess : mainWindow.themeDanger
+            radius: mainWindow.radiusLg
+        }
+        contentItem: ColumnLayout {
+            spacing: 14
+            Text {
+                text: databaseOperationResultPopup.message.startsWith("✅")
+                      ? "데이터베이스 작업 완료" : "데이터베이스 작업 실패"
+                font.pixelSize: 17
+                font.bold: true
+                color: databaseOperationResultPopup.message.startsWith("✅")
+                       ? mainWindow.themeSuccess : mainWindow.themeDanger
+            }
+            Text {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                text: databaseOperationResultPopup.message
+                wrapMode: Text.WrapAnywhere
+                color: mainWindow.themeMuted
+            }
+            Button {
+                text: "확인"
+                Layout.alignment: Qt.AlignRight
+                onClicked: databaseOperationResultPopup.close()
             }
         }
     }

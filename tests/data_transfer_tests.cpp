@@ -121,6 +121,37 @@ private slots:
         QCOMPARE(record.value("tax_val").toInt(), 0);
         QCOMPARE(record.value("pay_amt1").toInt(), 0);
     }
+
+    void backsUpAndVerifiesEmptyReset() {
+        QTemporaryDir temporary;
+        QVERIFY(temporary.isValid());
+        SqliteStorage storage("transfer_test_reset", temporary.filePath("data/data.db"));
+        QVERIFY(storage.initDB());
+
+        QString backup;
+        QString error;
+        QVERIFY2(storage.replaceTransferSnapshot(sampleSnapshot(), &backup, &error),
+                 qPrintable(error));
+
+        const QJsonObject emptySnapshot{
+            {"version", 1},
+            {"customers", QJsonArray{}},
+            {"items", QJsonArray{}},
+            {"records", QJsonArray{}},
+        };
+        backup.clear();
+        error.clear();
+        QVERIFY2(storage.replaceTransferSnapshot(emptySnapshot, &backup, &error),
+                 qPrintable(error));
+        QVERIFY(QFileInfo::exists(backup));
+
+        const QJsonObject actual = storage.exportTransferSnapshot(&error);
+        QVERIFY2(error.isEmpty(), qPrintable(error));
+        QCOMPARE(TransferSnapshot::counts(actual).value("customers").toInt(), 0);
+        QCOMPARE(TransferSnapshot::counts(actual).value("items").toInt(), 0);
+        QCOMPARE(TransferSnapshot::counts(actual).value("records").toInt(), 0);
+        QCOMPARE(TransferSnapshot::digest(actual), TransferSnapshot::digest(emptySnapshot));
+    }
 };
 
 QTEST_GUILESS_MAIN(DataTransferTests)

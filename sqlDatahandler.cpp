@@ -85,37 +85,65 @@ QString SqlHandler::lastError() const {
 }
 
 void SqlHandler::startDataTransfer(TransferDirection direction) {
-    if (m_transferInProgress) {
-        emit dataTransferFinished(QVariantMap{
+    if (m_databaseOperationInProgress) {
+        emit databaseOperationFinished(QVariantMap{
             {"success", false},
-            {"message", "이미 데이터 이전 작업이 진행 중입니다"},
+            {"message", "이미 데이터베이스 작업이 진행 중입니다"},
         });
         return;
     }
     if (m_baseUrl.trimmed().isEmpty() || m_apiKey.isEmpty()) {
-        emit dataTransferFinished(QVariantMap{
+        emit databaseOperationFinished(QVariantMap{
             {"success", false},
             {"message", "FastAPI 서버 주소와 API 키를 먼저 저장해주세요"},
         });
         return;
     }
 
-    m_transferInProgress = true;
-    emit transferInProgressChanged();
     const bool sqliteToApi = direction == TransferDirection::SqliteToApi;
     const QString baseUrl = m_baseUrl;
     const QString apiKey = m_apiKey;
+    watchDatabaseOperation(QtConcurrent::run([sqliteToApi, baseUrl, apiKey]() {
+        return DataTransfer::run(sqliteToApi, baseUrl, apiKey);
+    }));
+}
+
+void SqlHandler::startDatabaseReset(DbMode targetMode) {
+    if (m_databaseOperationInProgress) {
+        emit databaseOperationFinished(QVariantMap{
+            {"success", false},
+            {"message", "이미 데이터베이스 작업이 진행 중입니다"},
+        });
+        return;
+    }
+    const bool resetApi = targetMode == DbMode::Api;
+    if (resetApi && (m_baseUrl.trimmed().isEmpty() || m_apiKey.isEmpty())) {
+        emit databaseOperationFinished(QVariantMap{
+            {"success", false},
+            {"message", "FastAPI 서버 주소와 API 키를 먼저 저장해주세요"},
+        });
+        return;
+    }
+
+    const QString baseUrl = m_baseUrl;
+    const QString apiKey = m_apiKey;
+    watchDatabaseOperation(QtConcurrent::run([resetApi, baseUrl, apiKey]() {
+        return DataTransfer::reset(resetApi, baseUrl, apiKey);
+    }));
+}
+
+void SqlHandler::watchDatabaseOperation(QFuture<QVariantMap> future) {
+    m_databaseOperationInProgress = true;
+    emit databaseOperationInProgressChanged();
     auto *watcher = new QFutureWatcher<QVariantMap>(this);
     connect(watcher, &QFutureWatcher<QVariantMap>::finished, this, [this, watcher]() {
         const QVariantMap result = watcher->result();
         watcher->deleteLater();
-        m_transferInProgress = false;
-        emit transferInProgressChanged();
-        emit dataTransferFinished(result);
+        m_databaseOperationInProgress = false;
+        emit databaseOperationInProgressChanged();
+        emit databaseOperationFinished(result);
     });
-    watcher->setFuture(QtConcurrent::run([sqliteToApi, baseUrl, apiKey]() {
-        return DataTransfer::run(sqliteToApi, baseUrl, apiKey);
-    }));
+    watcher->setFuture(future);
 }
 
 void SqlHandler::syncExcelToSql(const QList<QStringList> &dataList) {

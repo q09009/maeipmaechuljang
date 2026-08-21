@@ -134,6 +134,21 @@ class TransferTests(unittest.TestCase):
         self.assertEqual(unchanged.records[0].total_val, 550)
         db.close()
 
+    def test_empty_replace_backs_up_and_verifies_reset(self) -> None:
+        self.seed_database()
+        db: Session = self.session_factory()
+
+        empty_snapshot = TransferSnapshot(customers=[], items=[], records=[])
+        result = transfers.replace_snapshot(empty_snapshot, db)
+        self.assertEqual((result.customers, result.items, result.records), (0, 0, 0))
+        self.assertTrue((Path(self.temp_dir.name) / result.backup_file).exists())
+
+        snapshot = transfers.read_snapshot(db)
+        self.assertEqual(len(snapshot.customers), 0)
+        self.assertEqual(len(snapshot.items), 0)
+        self.assertEqual(len(snapshot.records), 0)
+        db.close()
+
 
 if __name__ == "__main__":
     unittest.main()
