@@ -15,17 +15,18 @@ struct FieldSpec {
     const char *name;
     FieldKind kind;
     bool nullable = false;
+    bool allowEmpty = false;
 };
 
 const QList<FieldSpec> customerFields{{"name", FieldKind::Text},
                                       {"balance", FieldKind::Integer}};
 const QList<FieldSpec> itemFields{{"item_name", FieldKind::Text},
-                                  {"spec", FieldKind::Text},
+                                  {"spec", FieldKind::Text, false, true},
                                   {"price", FieldKind::Decimal}};
 const QList<FieldSpec> recordFields{
     {"gubun", FieldKind::Text},       {"tr_date", FieldKind::Date},
     {"customer", FieldKind::Text},    {"item", FieldKind::Text},
-    {"spec", FieldKind::Text},        {"price", FieldKind::Integer},
+    {"spec", FieldKind::Text, false, true}, {"price", FieldKind::Integer},
     {"amount", FieldKind::Integer},   {"supply_val", FieldKind::Integer},
     {"tax_val", FieldKind::Integer},  {"total_val", FieldKind::Integer},
     {"pay_date1", FieldKind::Date, true}, {"pay_amt1", FieldKind::Integer},
@@ -109,7 +110,8 @@ bool validateRows(const QJsonArray &rows, const QList<FieldSpec> &fields,
         for (const FieldSpec &field : fields) {
             bool ok = false;
             const QString value = normalizedValue(row.value(field.name), field, &ok);
-            if (!ok || (!field.nullable && field.kind == FieldKind::Text && value.isEmpty())) {
+            if (!ok || (!field.nullable && !field.allowEmpty
+                        && field.kind == FieldKind::Text && value.isEmpty())) {
                 if (error) {
                     *error = QString("%1.%2 값이 올바르지 않습니다")
                                  .arg(rowLabel).arg(field.name);

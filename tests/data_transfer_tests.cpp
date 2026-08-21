@@ -91,7 +91,7 @@ private slots:
         QCOMPARE(TransferSnapshot::digest(after), TransferSnapshot::digest(before));
     }
 
-    void normalizesLegacyNullNumbers() {
+    void normalizesLegacyNullValues() {
         QTemporaryDir temporary;
         QVERIFY(temporary.isValid());
         const QString connectionName = "transfer_test_legacy_nulls";
@@ -101,11 +101,11 @@ private slots:
             QSqlDatabase database = QSqlDatabase::database(connectionName);
             QSqlQuery query(database);
             QVERIFY(query.exec("INSERT INTO customer (name, balance) VALUES ('거래처', 0)"));
-            QVERIFY(query.exec("INSERT INTO item (item_name, spec, price) VALUES ('품목', 'EA', NULL)"));
+            QVERIFY(query.exec("INSERT INTO item (item_name, spec, price) VALUES ('품목', NULL, NULL)"));
             QVERIFY(query.exec(
                 "INSERT INTO records (gubun, tr_date, customer, item, spec, price, amount, "
                 "supply_val, tax_val, total_val, pay_amt1, pay_amt2, pay_amt3) VALUES "
-                "('매출', '2026-08-21', '거래처', '품목', 'EA', NULL, NULL, 100, NULL, 100, "
+                "('매출', '2026-08-21', '거래처', '품목', NULL, NULL, NULL, 100, NULL, 100, "
                 "NULL, NULL, NULL)"));
         }
 
@@ -114,8 +114,10 @@ private slots:
         QVERIFY2(error.isEmpty(), qPrintable(error));
         QVERIFY2(TransferSnapshot::validate(snapshot, &error), qPrintable(error));
         const QJsonObject item = snapshot.value("items").toArray().first().toObject();
+        QCOMPARE(item.value("spec").toString(), QString());
         QCOMPARE(item.value("price").toString(), QString("0"));
         const QJsonObject record = snapshot.value("records").toArray().first().toObject();
+        QCOMPARE(record.value("spec").toString(), QString());
         QCOMPARE(record.value("price").toInt(), 0);
         QCOMPARE(record.value("amount").toInt(), 0);
         QCOMPARE(record.value("tax_val").toInt(), 0);
