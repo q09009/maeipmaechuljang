@@ -64,7 +64,7 @@ void myMessageOutput(QtMsgType type, const QMessageLogContext &context, const QS
     }
 }
 
-const QString CURRENT_VERSION = "v1.4.2";
+const QString CURRENT_VERSION = "v1.4.3";
 
 int main(int argc, char *argv[])
 {
