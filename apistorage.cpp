@@ -1,6 +1,5 @@
 #include "apistorage.h"
 
-#include <QCollator>
 #include <QDate>
 #include <QDateTime>
 #include <QDebug>
@@ -190,18 +189,16 @@ void ApiStorage::refreshData() {
     m_dataName.clear();
     m_customerIds.clear();
 
-    QCollator koreanCollator(QLocale(QLocale::Korean, QLocale::SouthKorea));
-    koreanCollator.setCaseSensitivity(Qt::CaseInsensitive);
-    koreanCollator.setNumericMode(true);
-
     QList<QJsonObject> sortedCustomers;
     sortedCustomers.reserve(customers.size());
     for (const QJsonValue &value : customers)
         sortedCustomers.append(value.toObject());
     std::sort(sortedCustomers.begin(), sortedCustomers.end(),
-              [&koreanCollator](const QJsonObject &left, const QJsonObject &right) {
-        const int nameOrder = koreanCollator.compare(left["name"].toString(),
-                                                      right["name"].toString());
+              [](const QJsonObject &left, const QJsonObject &right) {
+        // 로컬 SQLite의 기본 COLLATE BINARY와 동일하게 원문 문자 코드로 비교한다.
+        const int nameOrder = QString::compare(left["name"].toString(),
+                                               right["name"].toString(),
+                                               Qt::CaseSensitive);
         return nameOrder != 0 ? nameOrder < 0 : left["id"].toInt() < right["id"].toInt();
     });
     for (const QJsonObject &obj : sortedCustomers) {
@@ -216,14 +213,11 @@ void ApiStorage::refreshData() {
     for (const QJsonValue &value : items)
         sortedItems.append(value.toObject());
     std::sort(sortedItems.begin(), sortedItems.end(),
-              [&koreanCollator](const QJsonObject &left, const QJsonObject &right) {
-        const int nameOrder = koreanCollator.compare(left["item_name"].toString(),
-                                                      right["item_name"].toString());
-        if (nameOrder != 0)
-            return nameOrder < 0;
-        const int specOrder = koreanCollator.compare(left["spec"].toString(),
-                                                      right["spec"].toString());
-        return specOrder != 0 ? specOrder < 0 : left["id"].toInt() < right["id"].toInt();
+              [](const QJsonObject &left, const QJsonObject &right) {
+        const int nameOrder = QString::compare(left["item_name"].toString(),
+                                               right["item_name"].toString(),
+                                               Qt::CaseSensitive);
+        return nameOrder != 0 ? nameOrder < 0 : left["id"].toInt() < right["id"].toInt();
     });
     for (const QJsonObject &obj : sortedItems) {
         m_dataProduct.append(QVariantMap{

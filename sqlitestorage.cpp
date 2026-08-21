@@ -215,7 +215,7 @@ void SqliteStorage::initData() {
     if (!m_db.isOpen()) return;
 
     QSqlQuery query(m_db);
-    query.exec("SELECT * FROM customer ORDER BY name ASC");
+    query.exec("SELECT * FROM customer ORDER BY name COLLATE BINARY ASC, id ASC");
 
     while (query.next()) {
         QVariant var;
@@ -225,7 +225,7 @@ void SqliteStorage::initData() {
         dataBalance.append(bal);
     }
 
-    query.exec("SELECT * FROM item ORDER BY item_name ASC");
+    query.exec("SELECT * FROM item ORDER BY item_name COLLATE BINARY ASC, id ASC");
 
     while (query.next()) {
         QVariantMap map;
@@ -246,7 +246,7 @@ void SqliteStorage::refreshData() {
     dataBalance.clear();
 
     QSqlQuery query(m_db);
-    query.exec("SELECT * FROM customer ORDER BY name ASC");
+    query.exec("SELECT * FROM customer ORDER BY name COLLATE BINARY ASC, id ASC");
 
     while (query.next()) {
         QVariant var;
@@ -256,7 +256,7 @@ void SqliteStorage::refreshData() {
         dataBalance.append(bal);
     }
 
-    query.exec("SELECT * FROM item ORDER BY item_name ASC");
+    query.exec("SELECT * FROM item ORDER BY item_name COLLATE BINARY ASC, id ASC");
 
     while (query.next()) {
         QVariantMap map;

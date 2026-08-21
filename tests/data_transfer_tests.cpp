@@ -9,6 +9,8 @@
 #include <QTemporaryDir>
 #include <QtTest>
 
+#include <algorithm>
+
 class DataTransferTests : public QObject {
     Q_OBJECT
 
@@ -153,6 +155,49 @@ private slots:
         QCOMPARE(TransferSnapshot::counts(actual).value("items").toInt(), 0);
         QCOMPARE(TransferSnapshot::counts(actual).value("records").toInt(), 0);
         QCOMPARE(TransferSnapshot::digest(actual), TransferSnapshot::digest(emptySnapshot));
+    }
+
+    void binaryOrderHandlesCompanyNameSymbolsConsistently() {
+        QTemporaryDir temporary;
+        QVERIFY(temporary.isValid());
+        const QString connectionName = "transfer_test_binary_order";
+        SqliteStorage storage(connectionName, temporary.filePath("data/data.db"));
+        QVERIFY(storage.initDB());
+
+        const QStringList names{
+            QStringLiteral("주식회사 가나다"),
+            QStringLiteral("㈜가나다"),
+            QStringLiteral("(주)가나다"),
+            QStringLiteral("가나다"),
+        };
+        {
+            QSqlDatabase database = QSqlDatabase::database(connectionName);
+            QSqlQuery customerQuery(database);
+            customerQuery.prepare("INSERT INTO customer (name, balance) VALUES (?, 0)");
+            QSqlQuery itemQuery(database);
+            itemQuery.prepare("INSERT INTO item (item_name, spec, price) VALUES (?, '', 0)");
+            for (const QString &name : names) {
+                customerQuery.bindValue(0, name);
+                QVERIFY(customerQuery.exec());
+                itemQuery.bindValue(0, name);
+                QVERIFY(itemQuery.exec());
+            }
+        }
+
+        QStringList expected = names;
+        std::sort(expected.begin(), expected.end(), [](const QString &left, const QString &right) {
+            return QString::compare(left, right, Qt::CaseSensitive) < 0;
+        });
+
+        storage.refreshData();
+        const QVariantList customers = storage.getDataName();
+        const QVariantList items = storage.getDataProduct();
+        QCOMPARE(customers.size(), expected.size());
+        QCOMPARE(items.size(), expected.size());
+        for (qsizetype index = 0; index < expected.size(); ++index) {
+            QCOMPARE(customers.at(index).toString(), expected.at(index));
+            QCOMPARE(items.at(index).toMap().value("name").toString(), expected.at(index));
+        }
     }
 };
 
