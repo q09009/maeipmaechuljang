@@ -70,6 +70,13 @@ int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
 
+    qInstallMessageHandler(myMessageOutput);
+    qInfo() << "-------------------------------------------";
+    qInfo() << "프로그램 실행됨 (로그 기록 시작)";
+    qInfo() << "-------------------------------------------";
+    qInfo() << "[UPDATE_CHECK] [START] 최신 버전 확인 시작 - 현재 버전:"
+            << CURRENT_VERSION;
+
     QNetworkAccessManager manager;
     QUrl updateUrl("https://api.github.com/repos/q09009/maeipmaechuljang/releases/latest");
     QNetworkRequest request(updateUrl);
@@ -108,17 +115,22 @@ int main(int argc, char *argv[])
     if (reply->error() == QNetworkReply::NoError) {
         QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
         latestVersionStr = doc.object().value("tag_name").toString().trimmed();
-        if (latestVersionStr.isEmpty())
+        if (latestVersionStr.isEmpty()) {
+            qWarning() << "[UPDATE_CHECK] [FAIL] GitHub 응답에서 최신 버전(tag_name)을 "
+                          "확인할 수 없습니다";
             latestVersionStr = CURRENT_VERSION;
-
-        isUpdateAvailable = isNewerThanCurrent(latestVersionStr, CURRENT_VERSION);
+        } else {
+            isUpdateAvailable = isNewerThanCurrent(latestVersionStr, CURRENT_VERSION);
+            qInfo() << "[UPDATE_CHECK] [RESULT] 현재 버전:" << CURRENT_VERSION
+                    << "/ 최신 버전:" << latestVersionStr
+                    << "/ 업데이트 필요:" << (isUpdateAvailable ? "예" : "아니요");
+        }
+    } else {
+        const int httpStatus = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        qWarning() << "[UPDATE_CHECK] [FAIL] 최신 버전 확인 실패 - HTTP 상태:"
+                   << httpStatus << "/ 사유:" << reply->errorString();
     }
     reply->deleteLater();
-
-    qInstallMessageHandler(myMessageOutput);
-    qInfo() << "-------------------------------------------";
-    qInfo() << "프로그램 실행됨 (로그 기록 시작)";
-    qInfo() << "-------------------------------------------";
 
     DataHandler excelhandler(&app);
     SqlHandler sqlHandler(&app);
